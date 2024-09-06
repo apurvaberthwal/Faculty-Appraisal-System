@@ -190,7 +190,7 @@ export const authorizeRole = (roles) => {
 
 export const sendApprovalEmail = async (user) => {
   const mailOptions = {
-      from: 'your-email@gmail.com',
+      from: process.env.SMTP_MAIL,
       to: user.email_id,
       subject: 'Your Account Has Been Approved',
       text: `Dear ${user.first_name} ${user.last_name},\n\nYour account has been approved. Here are your login credentials:\n\nUsername: ${user.email_id}\nPassword:"Misfits"\n\nBest regards,\nYour Institution`
@@ -202,3 +202,30 @@ export const sendApprovalEmail = async (user) => {
       console.error('Error sending email:', error);
   }
 };
+
+export async function sendCommitteeEmails(members) {
+  try {
+      for (const member of members) {
+          const mailOptions = {
+              from: process.env.SMTP_MAIL,
+              to: member.email_id,
+              subject: 'Committee Membership Notification',
+              text: `Dear ${member.first_name} ${member.last_name},
+
+              Congratulations! You have been selected as a committee member.
+
+              Institute: ${member.institution_name}
+              Department: ${member.department_name}
+              Start Date: ${new Date(member.start_date).toLocaleDateString()}
+
+              Best Regards,
+              Your Institute`
+          };
+
+          await transporter.sendMail(mailOptions);
+      }
+      console.log('Emails sent successfully');
+  } catch (error) {
+      console.error('Error sending emails:', error);
+  }
+}

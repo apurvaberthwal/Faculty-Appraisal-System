@@ -1,116 +1,120 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Principal Login</title>
     <style>
-    body {
+         body {
     background: linear-gradient(120deg, #3a7bd5 0%, #3a6073 100%);
     height: 100vh;
     display: flex;
     align-items: center;
     justify-content: center;
     font-family: Arial, sans-serif;
-    }
-
+}
 .login-container {
     width: 90%;
-    max-width: 350px;
-    padding: 16px;
+    max-width: 450px;
+    padding: 24px;
     background-color: rgba(0, 0, 0, 0.7);
-    color: #D6BD98;
+    color: white;
     border-radius: 8px;
     box-shadow: 0px 0px 10px 0px rgba(0,0,0,0.1);
     animation: slide-up 1s ease;
 }
-
-/* @keyframes slide-up {
-    0% {
-        transform: translateY(100%);
-        opacity: 0;
-    }
-    100% {
-        transform: translateY(0);
-        opacity: 1;
-    }
-} */
-
-.login-container h1 {
-    text-align: center;
-}
-
-.login-container input[type="text"],
-.login-container input[type="password"] {
-    width: 100%;
-    padding: 12px 20px;
-    margin: 8px 0;
-    display: inline-block;
-    border: 1px solid #ccc;
-    box-sizing: border-box;
-    transition: border 0.3s ease;
-}
-
-.login-container input[type="text"]:focus,
-.login-container input[type="password"]:focus {
-    border-color: #3a7bd5;
-}
-
-.login-container button {
-    background: linear-gradient(45deg, #3a7bd5, #3a6073);
-    color: white;
-    padding: 14px 20px;
-    margin: 8px 0;
-    border: none;
-    cursor: pointer;
-    width: 100%;
-    transition: background 0.3s ease;
-}
-
-.login-container button:hover {
-    background: linear-gradient(45deg, #3a6073, #3a7bd5);
-}
-
-.login-container a {
-    margin-top: 10px;
-    color:#D6BD98;;
-    text-decoration: none;
-}
-
-.login-container a:hover {
-    text-decoration: underline;
-}
-
-.Register {
-    display: flex;
-    justify-content: space-between;
-    
-}
-h1 {
-    color: #D6BD98;
-    padding-bottom: 10px;
-}
-
+        h1 {
+            color: #D6BD98;
+            text-align: center;
+            margin-bottom: 20px;
+        }
+        label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: bold;
+        }
+        input[type="text"], input[type="password"] {
+            width: 100%;
+            padding: 10px;
+            margin-bottom: 10px;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+            box-sizing: border-box;
+        }
+        input[type="text"]:focus, input[type="password"]:focus {
+            border-color: #3a7bd5;
+        }
+        button {
+            width: 100%;
+            padding: 14px;
+            margin-top: 10px;
+            background: linear-gradient(45deg, #3a7bd5, #3a6073);
+            color: white;
+            border: none;
+            cursor: pointer;
+            border-radius: 4px;
+            transition: background 0.3s ease;
+        }
+        button:hover {
+            background: linear-gradient(45deg, #3a6073, #3a7bd5);
+        }
+        .message {
+            padding: 10px;
+            text-align: center;
+            border-radius: 5px;
+            margin-bottom: 20px;
+        }
+        .success-message {
+            color: green;
+            background-color: #d4edda;
+            border: 1px solid #c3e6cb;
+        }
+        .error-message {
+            color: red;
+            background-color: #f8d7da;
+            border: 1px solid #f5c6cb;
+        }
+        .register-link {
+            margin-top: 10px;
+            text-align: center;
+        }
+        .register-link a {
+            color: #D6BD98;
+            text-decoration: none;
+        }
+        .register-link a:hover {
+            text-decoration: underline;
+        }
     </style>
 </head>
 <body>
-    <div class="login-container">
-        <form action="/principal/login" method="post">
-        <h1>Login For Principal</h1>
 
+<div class="login-container">
+    <% if (message) { %>
+        <div class="message success-message">
+            <%= message %>
+        </div>
+    <% } %>
+    <% if (error) { %>
+        <div class="message error-message">
+            <%= error %>
+        </div>
+    <% } %>
+    <h1>Login For Principal</h1>
+    <form action="/principal/login" method="post">
         <label for="uname"><b>Email ID:</b></label>
-        <input type="text" placeholder="Enter Email ID" name="uname" required>
+        <input type="text" placeholder="Enter Email ID" name="uname" <% if (username) { %> value="<%= username %>" <% } %> required>
 
         <label for="psw"><b>Password:</b></label>
         <input type="password" placeholder="Enter Password" name="password" required>
 
         <button type="submit">Login</button>
 
-    <div class="Register">
-        <a href="resetPassword.html">Forgot password?</a>
-    </div>
-   
-    </div>
-</form>
+        <div class="register-link">
+            <a href="resetPassword.html">Forgot password?</a>
+        </div>
+    </form>
+</div>
+
 </body>
 </html>

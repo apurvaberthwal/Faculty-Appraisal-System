@@ -75,9 +75,13 @@
         </div>
     </div>
 
+  
+    
+
+
     <script>
         function checkStatus() {
-            fetch('/check-status?email=<%= email %>')
+            fetch(`/check-status?email=<%= email %>`)
                 .then(response => {
                     if (!response.ok) {
                         throw new Error('Network response was not ok');
@@ -87,10 +91,10 @@
                 .then(data => {
                     if (data.message === 'Your request has been approved. Please log in.') {
                         document.getElementById('approvalMessage').style.display = 'block';
-                       
+                        
                         setTimeout(() => {
-                            // Redirect with email as query parameter
-                            window.location.href = `/faculty/login?username=<%= email %>`;
+                            // Redirect with email and instituteName as query parameters
+                            window.location.href = `/principal/login?username=<%= email %>`;
                         }, 3000);
                     }
                 })

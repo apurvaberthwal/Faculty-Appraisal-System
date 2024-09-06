@@ -65,9 +65,23 @@ router.post('/login', async (req, res) => {
 });
 
 
+router.get('/pending-requests', async (req, res) => {
+    try {
+        const result = await facultyDb.query("SELECT COUNT(*) as count FROM user_type_master WHERE status = 'inactive' AND user_type_type = 'admin'");
+      //  console.log(result)
+        const pendingRequests = result[0][0].count;
+      //  console.log(pendingRequests)
+        res.json({ pendingRequests });
+    } catch (error) {
+        console.error('Error fetching pending requests:', error);
+        res.json({ pendingRequests: 0 });
+    }
+});
 router.get("/dashboard",async (req, res) => {
     res.render("superAdmin/dashboard");
 })
+// Middleware to fetch pending approvals count for the navbar
+
 router.get("/createInstitute",async (req, res) => {
     res.render("superAdmin/add_institute");
 })
@@ -75,5 +89,41 @@ router.get("/createDepartment",async (req, res)=> {
     res.render("superAdmin/add_department");
 });    
 
+// GET route to display pending approvals with success and error messages
+router.get('/approvals', async (req, res) => {
+    const { successMsg, errorMsg } = req.query;
+
+    try {
+        const query = `SELECT utm.user_type_id, utm.user_name, um.first_name, um.last_name, im.institution_name, utm.timestamp
+                        FROM user_type_master utm
+                        JOIN user_master um ON utm.user_type_id = um.user_type_id
+                        JOIN institution_master im ON um.institution_id = im.institution_id
+                        WHERE utm.user_type_type = 'admin' AND utm.status = 'inactive'`;
+        const [rows] = await facultyDb.execute(query);
+        
+        res.render('./superadmin/approvals', { principals: rows, successMsg, errorMsg });
+    } catch (error) {
+        console.error('Error retrieving pending approvals:', error);
+        res.status(500).send('An error occurred while fetching data.');
+    }
+});
+
+// POST route to approve principal
+router.post('/approve/:user_type_id', async (req, res) => {
+    const { user_type_id } = req.params;
+
+    try {
+        const updateQuery = `UPDATE user_type_master SET status = 'active', timestamp = CURRENT_TIMESTAMP WHERE user_type_id = ?`;
+        await facultyDb.execute(updateQuery, [user_type_id]);
+        const updateQuery2 = `UPDATE user_master SET status = 'active', timestamp = CURRENT_TIMESTAMP WHERE user_type_id = ?`;
+        await facultyDb.execute(updateQuery2, [user_type_id]);
+
+
+        res.redirect('/superadmin/approvals?successMsg=Principal account approved successfully.');
+    } catch (error) {
+        console.error('Error updating principal status:', error);
+        res.redirect('/superadmin/approvals?errorMsg=Failed to approve principal.');
+    }
+});
 
 export default router;

@@ -235,6 +235,10 @@ DELIMITER ;
 
 
 
+
+
+
+
 insert into criteria_master (criteria_description, max_marks) values ('Teaching, Learning and Evaluation',260);
 insert into criteria_master (criteria_description, max_marks) values ('Research Publications',210);
 insert into criteria_master (criteria_description, max_marks) values ('Continuous Professional Education',110);
@@ -390,3 +394,29 @@ insert into user_type_master (user_name,password,user_type_type) values ("apurva
 insert into user_master(institution_id,dept_id,user_type_id) values ("INS1","DEPT1","USERTY1");
 ALTER TABLE self_appraisal_score_master
 ADD COLUMN supportive_document ENUM('proof', 'no proof') DEFAULT 'proof';
+
+-- Step 1: Create the `committee_master` table
+CREATE TABLE committee_member_master (
+    id int AUTO_INCREMENT PRIMARY KEY,
+    committee_id VARCHAR(50) UNIQUE,
+    user_id VARCHAR(50),
+    institution_id VARCHAR(50),
+    start_date DATE,
+    end_date DATE,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    FOREIGN KEY (user_id) REFERENCES user_master(user_id),
+    FOREIGN KEY (institution_id) REFERENCES institution_master(institution_id)
+);
+
+-- Step 2: Create a trigger for generating unique committee_id
+DELIMITER //
+CREATE TRIGGER before_insert_committee_member_master
+BEFORE INSERT ON committee_member_master
+FOR EACH ROW
+BEGIN
+    DECLARE next_id INT;
+    SET next_id = (SELECT AUTO_INCREMENT FROM information_schema.TABLES WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'committee_member_master');
+    SET NEW.committee_id = CONCAT('COMMIT', next_id);
+END//
+DELIMITER ;

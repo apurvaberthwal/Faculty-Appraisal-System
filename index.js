@@ -71,6 +71,45 @@ app.get('/api/institutes', async (req, res) => {
 });
 
 
+// Endpoint for checking the user status
+app.get("/check-status", async (req, res) => {
+  const email = req.query.email; // Get the email from query parameters
+ 
+  if (!email) {
+      return res.status(400).send('Email is required to check the approval status.');
+  }
+
+  try {
+      // Fetch the user's status from the database using email
+      const [result] = await facultyDb.query(
+          'SELECT status FROM user_type_master WHERE user_name = ?',
+          [email]
+      );
+
+      if (result.length > 0) {
+          const status = result[0].status;
+
+          // Check if the status is now active
+          if (status === 'active') {
+              // Send a success response with the approval message
+              console.log("pass")
+              return res.json({message:'Your request has been approved. Please log in.',username : email});
+          } else {
+              // If still inactive, send a response with the status
+              return res.json({message: 'Your request is still pending.', status: 'inactive'});
+          }
+      } else {
+          return res.status(404).send('User not found.');
+      }
+  } catch (error) {
+      console.error('Error checking user status:', error);
+      return res.status(500).send('Internal Server Error');
+  }
+});
+
+
+
+
 // Start the server
 app.listen(PORT, () => {
   console.log(`Server started on port ${PORT}`);

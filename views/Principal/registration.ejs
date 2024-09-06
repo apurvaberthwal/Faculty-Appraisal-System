@@ -1,8 +1,10 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
-    <meta charset="utf-8">
-    <title>Registration Page</title>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Principal Registration Form</title>
     <style>
         body {
             background: linear-gradient(120deg, #3a7bd5 0%, #3a6073 100%);
@@ -15,10 +17,12 @@
             align-items: center;
             height: 100vh;
         }
+
         h2 {
             margin-bottom: 20px;
             text-align: center;
         }
+
         .container {
             width: 850px;
             margin: 50px auto;
@@ -28,42 +32,41 @@
             border-radius: 8px;
             box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
         }
+
         .form-row {
             display: flex;
             flex-wrap: wrap;
             margin-bottom: 15px;
         }
+
         .form-group {
             flex: 1;
             padding: 10px;
             margin-right: 10px;
         }
+
         .form-group label {
             display: block;
             margin-bottom: 5px;
             font-weight: bold;
             padding: 6px;
         }
-        .form-group input {
+
+        .form-group input,
+        .form-group select {
             width: 96%;
             padding: 8px;
             border: 1px solid #ccc;
             border-radius: 5px;
             margin-right: 50px;
         }
-        .form-group select {
-            width: 102%;
-            padding: 8px;
-            border: 1px solid #ccc;
-            border-radius: 5px;
-            margin-right: 50px;
-        }
+
         .form-group:nth-child(3n+1) {
             clear: left;
             margin-left: 10px;
             margin-right: 10px;
-    
         }
+
         .submit-btn {
             display: block;
             width: 101%;
@@ -75,32 +78,65 @@
             font-size: 16px;
             cursor: pointer;
         }
+
         .submit-btn:hover {
             background-color: #0056b3;
         }
+
+        .message {
+            padding: 15px;
+            margin-bottom: 20px;
+            border-radius: 5px;
+            text-align: center;
+            font-weight: bold;
+        }
+
+        .error {
+            background-color: #f8d7da;
+            color: #721c24;
+            border: 1px solid #f5c6cb;
+        }
+
+        .success {
+            background-color: #d4edda;
+            color: #155724;
+            border: 1px solid #c3e6cb;
+        }
     </style>
 </head>
+
 <body>
     <div class="container">
-        <h2>Registration Form</h2>
-        <form action="#" method="post">
+        <h2>Principle Registration Form</h2>
+
+        <!-- Success Message -->
+        <% if (successMsg) { %>
+            <div class="message success"><%= successMsg %></div>
+        <% } %>
+
+        <!-- Error Message -->
+        <% if (errorMsg) { %>
+            <div class="message error"><%= errorMsg %></div>
+        <% } %>
+
+        <form action="/principal/register" method="post">
             <div class="form-row">
                 <div class="form-group">
-                    <label for="employeeID">Employee ID:</label>
-                    <input type="text" id="employeeID" name="employeeID" placeholder="Enter employee ID" required>
+                    <label for="employeeID">Employee ID: <span>*</span></label>
+                    <input type="text" id="employeeID" name="employeeId" placeholder="Enter employee ID" required>
                 </div>
                 <div class="form-group">
-                    <label for="pancard">PAN Card Number:</label>
-                    <input type="text" id="pancard" name="pancard" placeholder="Enter PAN Card Number" pattern="[A-Z]{5}[0-9]{4}[A-Z]{1}" required>
+                    <label for="pancard">PAN Card Number: <span>*</span></label>
+                    <input type="text" id="pancard" name="panCard" placeholder="Enter PAN Card Number" pattern="[A-Z]{5}[0-9]{4}[A-Z]{1}" required>
                 </div>
                 <div class="form-group">
-                    <label for="aadhaar">Aadhaar Number:</label>
+                    <label for="aadhaar">Aadhaar Number: <span>*</span></label>
                     <input type="text" id="aadhaar" name="aadhaar" placeholder="Enter Aadhaar Number" pattern="\d{12}" minlength="12" maxlength="12" required>
                 </div>
             </div>
             <div class="form-row">
                 <div class="form-group">
-                    <label for="firstName">First Name:</label>
+                    <label for="firstName">First Name: <span>*</span></label>
                     <input type="text" id="firstName" name="firstName" placeholder="Enter First Name" required>
                 </div>
                 <div class="form-group">
@@ -108,42 +144,33 @@
                     <input type="text" id="middleName" name="middleName" placeholder="Enter Middle Name">
                 </div>
                 <div class="form-group">
-                    <label for="lastName">Last Name:</label>
+                    <label for="lastName">Last Name: <span>*</span></label>
                     <input type="text" id="lastName" name="lastName" placeholder="Enter Last Name" required>
                 </div>
             </div>
             <div class="form-row">
                 <div class="form-group">
-                    <label for="emailID">Email ID:</label>
-                    <input type="email" id="emailID" name="emailID" placeholder="Enter Email ID" required>
+                    <label for="emailID">Email ID: <span>*</span></label>
+                    <input type="email" id="emailID" name="email" placeholder="Enter Email ID" required>
                 </div>
                 <div class="form-group">
-                    <label for="contact">Contact Number:</label>
-                    <input type="text" id="contact" name="contact" placeholder="Enter contact number" required pattern="\d{10}" minlength="10" maxlength="10" required>
+                    <label for="contact">Contact Number: <span>*</span></label>
+                    <input type="text" id="contact" name="contact" placeholder="Enter contact number" required pattern="\d{10}" minlength="10" maxlength="10">
                 </div>
                 <div class="form-group">
-                    <label for="dob">Date of Birth:</label>
+                    <label for="dob" class="grid-item3">Date of Birth: <span>*</span></label>
                     <input type="date" id="dob" name="dob" required>
                 </div>
             </div>
             <div class="form-row">
                 <div class="form-group">
-                    <label for="instituteName">Institute Name:</label>
-                    <select id="instituteName" name="instituteName" required>
-                        <option value="">Select an Institute Name</option>
-                        <option value=""></option>
-                        <option value=""></option>
-                        <option value=""></option>
-                    </select>
+                    <label for="instituteName">Institute Name <span>*</span>:</label>
+                   <input type="text" name="instituteName" id="instituteName" placeholder="Enter your Institue Name">
                 </div>
                 <div class="form-group">
-                    <label for="departmentName">Department Name:</label>
-                    <select id="departmentName" name="departmentName" required>
-                        <option value="">Select Department Name</option>
-                        <option value=""></option>
-                        <option value=""></option>
-                        <option value=""></option>
-                    </select>
+                    <label for="departmentId">Department Name <span>*</span>:</label>
+                    <input type="text" name="departmentName" id="instituteName" placeholder="Enter your Department Name">
+
                 </div>
             </div>
             <div class="form-row">
@@ -153,6 +180,17 @@
             </div>
         </form>
     </div>
-    
+
+    <script>
+        // Set max date for Date of Birth to 21 years less than the current date
+        document.addEventListener('DOMContentLoaded', function() {
+            const today = new Date();
+            const maxDate = new Date(today.getFullYear() - 30, today.getMonth(), today.getDate());
+            document.getElementById('dob').max = maxDate.toISOString().split('T')[0];
+        });
+
+       
+    </script>
 </body>
+
 </html>

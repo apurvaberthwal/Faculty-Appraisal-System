@@ -1,10 +1,13 @@
 import bcrypt from 'bcryptjs';
+import crypto from 'crypto';
 import express from 'express';
 import fs from 'fs';
 import jwt from 'jsonwebtoken';
 import multer from 'multer';
 import path from 'path';
 import facultyDb from '../faculty.db.js';
+import { transporter } from '../service.js';
+
 const router = express.Router();
 const storage = multer.diskStorage({
     destination: function (req, file, cb) {
@@ -71,19 +74,19 @@ router.get('/login', (req, res) => {
 
 
 router.post('/login', async (req, res) => {
-    console.log("admin2");
+    console.log("Faculty Login");
 
-    const username = req.body.username;
+    const username = req.body.uname;
     const email=username;
     const password = req.body.password;
-
+    console.log("email: " + email)
     try {
         const result = await facultyDb.query(
             'SELECT * FROM user_type_master WHERE user_name = ? AND user_type_type = "employee"',
             [username]
         );
         const user = result[0];
-
+        console.log(user);
         if (user.length > 0) {
             const user_id = user[0].user_type_id;
             const role = 'faculty'; // Hardcoding role for faculty
@@ -97,11 +100,11 @@ router.post('/login', async (req, res) => {
             if (status === 'inactive') {
                 res.redirect(`/faculty/wait?email=${encodeURIComponent(email)}`);
             } else if (!passwordMatch) {
-                res.render('./Faculty/login', { error: 'Invalid username or password', message: '', username: email});
+                res.render('./Faculty/login', { error: 'Invalid password', message: '', username: email});
             } else {
                 // Check if the password is the default password
                 if (isDefaultPassword) {
-                    res.redirect(`/faculty/reset-password?user_id=${user_id}`);
+                    res.redirect(`/faculty/reset-password?user_id=${username}`);
                 } else {
                     const token = jwt.sign({ user_id, role }, process.env.JWT_SECRET, { expiresIn: '2h' });
                     res.cookie('token', token, { httpOnly: true });
@@ -110,7 +113,7 @@ router.post('/login', async (req, res) => {
                 }
             }
         } else {
-            res.render('./Faculty/login', { error: 'Invalid username or password', message: '', username: '' });
+            res.render('./Faculty/login', { error: 'User Does not Exists ', message: '', username: '' });
         }
     } catch (err) {
         console.error(err);
@@ -221,7 +224,7 @@ router.post('/register', async (req, res) => {
             console.log('Insert Result (user_master):', result);
         } catch (error) {
             if (error.code === 'ER_DUP_ENTRY') {
-                return res.render('./Faculty/registration', { successMsg: "", errorMsg: "Duplicate entry detected. Please ensure unique values for email, PAN, and Aadhaar." });
+                return res.render('./Faculty/registration', { successMsg: "", errorMsg: "Duplicate entry detected. Please ensure unique values  PAN, and Aadhaar." });
             } else if (error.code === 'ER_NO_REFERENCED_ROW_2') {
                 return res.render('./Faculty/registration', { successMsg: "", errorMsg: "Invalid institution or department ID." });
             } else {
@@ -250,41 +253,7 @@ router.get("/wait", (req, res) => {
     return res.render('./Faculty/wait', { email });
 });
 
-// Endpoint for checking the user status
-router.get("/check-status", async (req, res) => {
-    const email = req.query.email; // Get the email from query parameters
-    console.log("test")
-    if (!email) {
-        return res.status(400).send('Email is required to check the approval status.');
-    }
 
-    try {
-        // Fetch the user's status from the database using email
-        const [result] = await facultyDb.query(
-            'SELECT status FROM user_type_master WHERE user_name = ?',
-            [email]
-        );
-
-        if (result.length > 0) {
-            const status = result[0].status;
-
-            // Check if the status is now active
-            if (status === 'active') {
-                // Send a success response with the approval message
-                console.log("pass")
-                return res.json({message:'Your request has been approved. Please log in.',username : email});
-            } else {
-                // If still inactive, send a response with the status
-                return res.json({message: 'Your request is still pending.', status: 'inactive'});
-            }
-        } else {
-            return res.status(404).send('User not found.');
-        }
-    } catch (error) {
-        console.error('Error checking user status:', error);
-        return res.status(500).send('Internal Server Error');
-    }
-});
 
 
 // Fetch parameters based on criteria
@@ -320,17 +289,12 @@ router.post('/reset-password', async (req, res) => {
             const hashedPassword = await bcrypt.hash(newPassword, salt);
 
             const result = await facultyDb.query(
-                'UPDATE user_type_master SET password = ? WHERE user_type_id = ?',
+                'UPDATE user_type_master SET password = ? WHERE user_name = ?',
                 [hashedPassword, user_id]);
             
-            // Get the username from the database using the user_id
-            const userResult = await facultyDb.query(
-                'SELECT user_name FROM user_type_master WHERE user_type_id = ?',
-                [user_id]
-            );
-            const username = userResult[0][0].user_name;
+            
 
-            res.redirect(`/Faculty/login?message=Password changed successfully!&username=${encodeURIComponent(username)}`);
+            res.redirect(`/Faculty/login?message=Password changed successfully!&username=${encodeURIComponent(user_id)}`);
         } catch (err) {
             console.error(err);
             res.status(500).send('Server error');
@@ -655,11 +619,96 @@ router.post('/submit-criteria-status', async (req, res) => {
     }
 });
 
+router.get('/forget-password', (req, res) => {
 
+    res.render("./faculty/forgetPassword",{errorMessage:""})
+});
 
+router.post('/forget-password', async(req, res) => {
+    const username=req.body.username
+    try {
+        const result = await facultyDb.query(
+            'SELECT * FROM user_type_master WHERE user_name = ?  AND user_type_type= "employee"',
+            [username]
+        );
+        const user = result[0];
+        console.log('User from DB:',user);
 
+        if (user.length > 0) {
+            const status = user[0].status; // Assuming `status` is a field in `user_type_master`
+            const user_id = user[0].user_type_id;
+            if (status === 'inactive') {
+                res.redirect(`/faculty/wait?email=${encodeURIComponent(username)}`);
+            } 
+            else{
+             // Generate a 6-digit OTP
+            console.log("Generating")
+             const otp = crypto.randomInt(100000, 999999).toString();
 
+             // Store OTP in OTP_MASTER table
+             await facultyDb.query(
+                 'INSERT INTO OTP_MASTER (OTP_ID, EMAIL_ID, OTP, STATUS) VALUES (?, ?, ?, "active")',
+                 [crypto.randomBytes(16).toString('hex'), username, otp]
+             );
+ 
+             // Send OTP to user's email
+             let mailOptions = {
+                 from: process.env.EMAIL_USERNAME,
+                 to: username, // assuming username is the user's email
+                 subject: 'Password Reset ',
+                 text: `Your OTP for changing password is  ${otp}`
+             };
+ 
+             transporter.sendMail(mailOptions, function(error, info){
+                 if (error) {
+                     console.log(error);
+                 } else {
+                     console.log('Email sent: ' + info.response);
+                 }
+             });
+            res.render("./faculty/verify",{username:username})}
+        } else {
+            res.render("./faculty/forgetPassword",{errorMessage:"User not found"});
+        }
+    } catch (error) {
+        console.error(error);
+        res.render("./faculty/forgetPassword",{errorMessage:error});    }
+    
+});
 
+router.post('/verifyOtp', async function (req, res) {
+    const username = req.body.username;
+    const otp = req.body.otp;
+    console.log('Username:', username);
+    console.log('OTP:', otp);
+    try {
+        const q = await facultyDb.query(`SELECT otp, timestamp FROM otp_master WHERE email_id = ?
+        AND status = 'active' ORDER BY timestamp DESC LIMIT 1;`, [username]
+        )
+        console.log(q);
+        const otpData = q[0][0n];
+        const oldOTP= otpData.otp;
+        const timestamp = otpData.timestamp;
+    
+        console.log(oldOTP, timestamp);
+        const currentTime = new Date().getTime();
+        if (currentTime - timestamp > 300000) {
+            console.log('The OTP has expired. Please request a new OTP.')
+            return res.render('./Principal/login', { error: 'The OTP has expired. Please request a new OTP.' });
+        }
+        if (String(oldOTP) !== String(otp)) {
+            console.log('error', 'Invalid OTP.');
+            return res.render('./Principal/verify', { error: 'Invalid OTP.', username });
+        }
+        else {
+            console.log('success', 'OTP verified successfully.');
+            const [result] = await facultyDb.query(
+                'UPDATE otp_master SET status = "inactive" WHERE email_id = ? AND otp = ?',
+                [username, otp]
+            );
+            res.redirect(`/faculty/reset-password?user_id=${encodeURIComponent(username)}`);
+        }}
+        catch (err) {console.log('error', err)}})
 
 
 export default router;

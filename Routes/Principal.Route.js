@@ -2,11 +2,93 @@ import bcrypt from 'bcryptjs';
 import crypto from 'crypto';
 import express from 'express';
 import jwt from "jsonwebtoken";
+import Razorpay from 'razorpay';
 import facultyDb from '../faculty.db.js';
 import { authorizeRole, jwtMiddleware, sendApprovalEmail, sendCommitteeEmails, transporter } from '../service.js';
 const router = express.Router();
-
 router.use(jwtMiddleware);
+
+
+const razorpayInstance = new Razorpay({
+    key_id: process.env.RAZORPAY_ID_KEY,
+    key_secret: process.env.RAZORPAY_SECRET_KEY,
+});
+
+router.get('/payment', (req, res) => {
+    const email = "apurva3barthwal@gmail.com"; // You can fetch this dynamically
+    const institute_id = "INS8"; // You can fetch this dynamically
+
+    res.render('principal/payment', { 
+        email, 
+        institute_id, 
+        razorpayId: process.env.RAZORPAY_ID_KEY 
+    });
+});
+
+router.post('/payment', async (req, res) => {
+    const email = "apurva3barthwal@gmail.com"; // You can fetch this dynamically
+    const institute_id = "INS8"; // Replace with dynamic values if needed
+
+    try {
+        // Create an order in Razorpay
+        const options = {
+            amount: 2000000,  // Amount in paise (e.g., 20,000 INR)
+            currency: "INR",
+            receipt: `order_receipt_${Date.now()}`,  // Unique identifier for this order
+        };
+        console.log(options.amount)
+        const order = await razorpayInstance.orders.create(options);
+
+        // Store the order details in MySQL
+        const insertOrderQuery = `
+            INSERT INTO payment_orders (order_id,amount, principal_email, institution_id, payment_status)
+            VALUES (?, ?,?, ?, 'created')
+        `;
+        await facultyDb.execute(insertOrderQuery, [order.id,options.amount, email, institute_id,]);
+
+        // Send the order details to the client
+        res.json({
+            amount: options.amount,
+            currency: options.currency,
+            orderId: order.id
+        });
+    } catch (error) {
+        console.error('Error creating order:', error);
+        res.status(500).json({ error: "An error occurred while creating the order." });
+    }
+});
+router.post('/verify-payment', async (req, res) => {
+    const { order_id, payment_id, razorpay_signature } = req.body;
+
+    // Verify payment using Razorpay's API
+    try {
+        const body = order_id + "|" + payment_id;
+      
+        const expectedSignature = crypto.createHmac('sha256', process.env.RAZORPAY_SECRET_KEY)
+                                       .update(body.toString())
+                                       .digest('hex');
+
+        if (expectedSignature === razorpay_signature) {
+            // Update payment status in the database
+            const updatePaymentStatusQuery = `
+                UPDATE payment_orders
+                SET payment_status = 'paid'
+                WHERE order_id = ?
+            `;
+            await facultyDb.execute(updatePaymentStatusQuery, [order_id]);
+
+            res.send('Payment  Sucessfull Successfully');
+        } else {
+            res.status(400).send('Payment verification failed');
+        }
+    } catch (error) {
+        console.error('Error verifying payment:', error);
+        res.status(500).send("An error occurred while verifying payment.");
+    }
+});
+
+
+
 
 router.get('/login', (req, res) => {
     const message = req.query.message || '';
@@ -14,6 +96,16 @@ router.get('/login', (req, res) => {
     const username = req.query.username || '';
     res.render('./principal/login', { message, error, username });
 });
+
+
+
+
+
+
+
+
+
+
 
 
 router.get('/register', (req, res) => {
@@ -327,10 +419,10 @@ router.post('/login', async (req, res) => {
  
              // Send OTP to user's email
              let mailOptions = {
-                 from: process.env.EMAIL_USERNAME,
+                 from: process.env.SMTP_MAIL,
                  to: username, // assuming username is the user's email
-                 subject: 'Your OTP ',
-                 text: `Your OTP is asbs ${otp}`
+                 subject: '2FA for Principal Login  ',
+                 text: `Your OTP is ${otp}`
              };
  
              transporter.sendMail(mailOptions, function(error, info){
@@ -391,9 +483,32 @@ router.use(authorizeRole('admin'));
 
 
     
-router.get('/dashboard', (req, res) => {
-    res.render('./Principal/emptable');
-});
+router.get('/dashboard', async(req, res) => {
+   
+try {
+            const principalId = req.user.id; // Assuming you have authentication set up
+           
+            const instituteId = req.user.institution_id
+    
+            // Fetch all active employees for the principal's institute
+            const activeEmployeesQuery = `
+            SELECT um.user_id, um.email_id, um.first_name, um.last_name, dm.department_name, um.emp_id, um.timestamp as start_date,utm.user_type_type as type ,utm.status
+            FROM user_master um
+            JOIN department_master dm ON um.dept_id = dm.dept_id
+            JOIN user_type_master utm ON um.user_type_id = utm.user_type_id
+            WHERE um.institution_id = ? AND um.status = 'active' AND (utm.user_type_type = 'employee' OR utm.user_type_type = 'committee') ;
+        `;
+            const [employees] = await facultyDb.execute(activeEmployeesQuery, [instituteId]);
+    
+            res.render('./Principal/emptable',{employees});        }
+        catch (err) {
+            console.error(err);
+        }
+        
+        });
+    
+
+
 
 router.get('/approvals', async (req, res) => {
     if (req.user.role !== 'admin') return res.status(403).send('Access denied.');
@@ -486,21 +601,21 @@ router.get('/createCommittee',async (req, res) => {
 
 
 router.post('/submit-committee', async (req, res) => {
-        const { committeeMembers, tenure } = req.body;
+        const { committeeMembers, start_date,end_date } = req.body;
         const principalId = req.user.user_id;
         const instituteId = req.user.institution_id;
     
         // Check for missing data
-        if (!committeeMembers || committeeMembers.length === 0 || !tenure) {
+        if (!committeeMembers || committeeMembers.length === 0 ) {
             return res.status(400).json({ success: false, message: "Missing committee members or tenure" });
         }
     
         // Get current date for start_date
-        const startDate = new Date();
+        const startDate =start_date;
     
         // Calculate endDate by adding the tenure (in years) to the start_date
-        const endDate = new Date();
-        endDate.setFullYear(endDate.getFullYear() + parseInt(tenure));
+        const endDate = end_date;
+        console.log(committeeMembers, startDate, endDate);
     
         // Begin transaction
         const connection = await facultyDb.getConnection();
@@ -520,16 +635,21 @@ router.post('/submit-committee', async (req, res) => {
     
                 // Fetch user details for email
                 const selectUserDetailsQuery = `
-                    SELECT um.user_id, um.email_id, um.first_name, um.last_name, dm.department_name, um.timestamp as start_date
-                    FROM user_master um
-                    JOIN department_master dm ON um.dept_id = dm.dept_id
-                    WHERE um.user_id = ?;
+                SELECT um.user_id, um.email_id, um.first_name, um.last_name, dm.department_name, im.institution_name
+                FROM user_master um
+                JOIN department_master dm ON um.dept_id = dm.dept_id
+                JOIN institution_master im ON um.institution_id = im.institution_id
+                WHERE um.user_id = ?;
                 `;
                 const [userDetails] = await connection.query(selectUserDetailsQuery, [memberId]);
                 if (userDetails.length > 0) {
-                    committeeMembersDetails.push(userDetails[0]);
+                    const memberDetail = userDetails[0];
+                    memberDetail.start_date = startDate;
+                    memberDetail.end_date = endDate;
+                    committeeMembersDetails.push(memberDetail);
                 }
             }
+            console.log(committeeMembersDetails)
     
             // Update user_type_type in user_type_master
             const userTypeIdsArray = [];
@@ -575,25 +695,152 @@ router.post('/submit-committee', async (req, res) => {
 // Route to display committee member details
 router.get('/editCommittee', async (req, res) => {
     const instituteId = req.user.institution_id; // Assuming the user is a principal and belongs to an institution
-
+    const message = req.query.message || '';
     try {
         // Query to fetch committee member details
         const query = `
             SELECT cm.user_id, u.first_name, u.last_name, u.email_id, cm.start_date, cm.end_date
             FROM committee_member_master cm
             JOIN user_master u ON cm.user_id = u.user_id
-            WHERE cm.institution_id = ?;
+            WHERE cm.institution_id = ? and cm.status ="active";
         `;
 
         const [committeeMembers] = await facultyDb.query(query, [instituteId]);
 
         // Render the EJS page with the fetched data
-        res.render('./principal/committee', { committeeMembers });
+        res.render('./principal/committee', { committeeMembers ,message});
     } catch (err) {
         console.error("Error fetching committee members:", err);
         res.status(500).send("Error fetching committee members.");
     }
 });
+
+// Route to remove a committee member
+router.post('/removeCommitteeMember', async (req, res) => {
+    const { user_id } = req.body;
+
+    // Check if user_id is provided
+    if (!user_id) {
+        return res.status(400).json({ error: 'Valid User ID is required' });
+    }
+
+    try {
+        // Set the status of the committee member to 'inactive'
+        const updateCommitteeMemberStatus = 'UPDATE committee_member_master SET status = "inactive" WHERE user_id = ?';
+        const [result] = await facultyDb.query(updateCommitteeMemberStatus, [user_id]);
+
+        if (result.affectedRows === 0) {
+            return res.status(500).json({ error: 'Failed to remove committee member' });
+        }
+
+        // Get the user_type_id of the user
+        const getUserTypeID = 'SELECT user_type_id FROM user_master WHERE user_id = ?';
+        const [userTypeID] = await facultyDb.query(getUserTypeID, [user_id]);
+
+        // Check if user_type_id was found
+        if (userTypeID.length === 0) {
+            return res.status(404).json({ error: 'User not found' });
+        }
+
+        // Set the user_type_type of the user to 'employee'
+        const updateUserType = 'UPDATE user_type_master SET user_type_type = "employee" WHERE user_type_id = ?';
+        await facultyDb.query(updateUserType, [userTypeID[0].user_type_id]);
+
+        // Send a success response
+        res.redirect(`/principal/editCommittee?message=${encodeURIComponent('Successfully removed committee member')}`);
+    } catch (err) {
+        console.error(err);
+        res.status(500).json({ error: 'Internal Server Error' });
+    }
+});
+
+
+
+router.get("/add-departments", (req, res) => {
+    
+    res.render("./Principal/addDepartment",{success: "",error: ""});
+})
+router.post("/add-departments", async (req, res) => {
+    const { department_name } = req.body;
+    const instituteId = req.user.institution_id;
+    const userTypeID = req.user.user_id;
+    console.log(userTypeID)
+    try {
+        const [department] = await facultyDb.query(
+            'SELECT dept_id FROM department_master WHERE department_name = ? AND institution_id = ?',
+            [department_name, instituteId]
+        );
+
+        if (department.length > 0) {
+            return res.render('./Principal/addDepartment',{success:"",error:'Department already exists'});
+        }
+
+        const [result] = await facultyDb.query(
+            'INSERT INTO department_master (department_name, institution_id,user_name) VALUES (?, ?,?)',
+            [department_name, instituteId,userTypeID]
+        );
+
+        if (result.affectedRows > 0) {
+            return res.render('./principal/addDepartment',{success:"Successfully Added Department!!!!!",error:''});
+        }
+        return res.render('./Principal/addDepartment',{success:"",error:'Failed to add department'});
+
+
+    } catch (error) {
+        console.error('Error adding department:', error);
+        return res.render('./Principal/addDepartment',{success:"",error:'Internal Server Error'});
+    }
+})
+
+
+// Get route to display the list of departments
+router.get('/departments', async (req, res) => {
+    try {
+        // Fetch the active departments
+        const [departments] = await facultyDb.query(
+            'SELECT * FROM department_master WHERE institution_id = ? AND status="active"',
+            [req.user.institution_id]
+        );
+
+        // Fetch the removed departments
+        const [removedDepartments] = await facultyDb.query(
+            'SELECT * FROM department_master WHERE institution_id = ? AND status="inactive"',
+            [req.user.institution_id]
+        );
+
+        // Render the page with the list of active and removed departments
+        res.render('./principal/departments', {
+            departments: departments,
+            removedDepartments: removedDepartments,  // Pass removed departments
+            message: req.query.message || null  // Optional success message after remove
+        });
+    } catch (error) {
+        console.error('Error fetching departments:', error);
+        res.status(500).send('Internal Server Error');
+    }
+});
+
+
+// Post route to remove a department
+router.post('/removeDepartment', async (req, res) => {
+    
+    const departmentId = req.body.dept_id;
+    console.log("aaa",
+        departmentId);
+
+    try {
+        // Remove department from the database (you can also make it soft-delete if needed)
+        await facultyDb.query('Update department_master set status="inactive" WHERE dept_id = ?', [departmentId]);
+
+        // Redirect to the departments page with a success message
+        res.redirect('/principal/departments?message=Department removed successfully');
+    } catch (error) {
+        console.error('Error removing department:', error);
+        res.status(500).send('Internal Server Error');
+    }
+});
+
+
 
 
 router.get('/logout', (req, res) => {

@@ -6,46 +6,115 @@
     <title>Homepage</title>
     <style>
         body {
-            font-family: Arial, sans-serif;
+            background: linear-gradient(120deg, #3a7bd5 100%, #3a6073 100%);
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
             margin: 0;
             padding: 0;
-            background-color: #f4f4f4;
         }
+
         .container {
-            width: 80%;
-            margin: auto;
-            overflow: hidden;
+           margin-top: 80px;
+           margin-left: 50px; 
+           width: 85%;
+            
+            padding: 40px;
+            background-color: rgba(0, 0, 0, 0.7);
+            color: white;
+            border-radius: 12px;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.2);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
         }
+
+        .left-side {
+            flex: 1;
+            text-align: center;
+        }
+
+        .left-side img {
+            width: 100%;
+            max-width: 500px;
+            border-radius: 12px;
+        }
+
+        .right-side {
+            flex: 1;
+            text-align: center;
+        }
+
         h1 {
-            color: #333;
-            padding: 20px 0;
+            font-size: 36px;
+            margin-bottom: 20px;
+            color: #f2f2f2;
         }
-        ul {
-            list-style: none;
-            padding: 0;
+
+        .login-group, .register-group {
+            margin-bottom: 20px;
         }
-        ul li {
-            background: #333;
-            color: #fff;
+
+        .login-group h2, .register-group h2 {
+            font-size: 24px;
+            margin-bottom: 10px;
+            color: #f2f2f2;
+        }
+
+        .btn-group button {
+            background-color: #3498db;
+            color: white;
+            border: none;
+            padding: 12px 20px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 16px;
+            transition: background-color 0.3s ease;
             margin: 5px 0;
-            padding: 10px;
+            width: 100%;
+            max-width: 250px;
         }
-        ul li a {
-            color: #fff;
-            text-decoration: none;
+
+        .btn-group button:hover {
+            background-color: #2980b9;
+        }
+
+        @media (max-width: 768px) {
+            .container {
+                flex-direction: column;
+                text-align: center;
+            }
+
+            .left-side img {
+                max-width: 100%;
+            }
+
+            .btn-group {
+                width: 100%;
+            }
         }
     </style>
 </head>
 <body>
     <div class="container">
-        <h1>Welcome to the Homepage</h1>
-        <p>Select your login:</p>
-        <ul>
-            <li><a href="/principal/login">Principal Login</a></li>
-            <li><a href="/committee/login">Committee Member Login</a></li>
-            <li><a href="/faculty/login">Faculty Login</a></li>
-            <li><a href="/superadmin/login">Superadmin Login</a></li>
-        </ul>
+        <div class="left-side">
+            <img src="/images/logo.jpg" alt="Decorative Image">
+        </div>
+        <div class="right-side">
+            <h1>Welcome to the Homepage</h1>
+            <div class="login-group">
+                <h2>Login</h2>
+                <div class="btn-group">
+                    <button onclick="window.location.href='/principal/login'">Principal Login</button>
+                    <button onclick="window.location.href='/faculty/login'">Faculty Login</button>
+                </div>
+            </div>
+            <div class="register-group">
+                <h2>Register</h2>
+                <div class="btn-group">
+                    <button onclick="window.location.href='/principal/register'">Principal Register</button>
+                    <button onclick="window.location.href='/faculty/register'">Faculty Register</button>
+                </div>
+            </div>
+        </div>
     </div>
 </body>
 </html>

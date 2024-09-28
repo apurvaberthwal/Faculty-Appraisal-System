@@ -49,7 +49,8 @@ router.use((req, res, next) => {
             req.user = user;
             console.log('Decoded JWT:', user); // Log the decoded JWT payload
             console.log('User ID:', user.user_id); // Log the user ID specifically
-            res.locals.loggedIn = user.loggedIn; // Set a local variable
+            res.locals.loggedIn = user.loggedIn;
+            res.locals.user = user; // Set a local variable
         } catch (err) {
             console.error('JWT verification error:', err);
             res.clearCookie('token');
@@ -70,56 +71,158 @@ router.get('/login', (req, res) => {
     res.render('./Faculty/login', { message, error, username });
 });
 
-
+router.post('/verify', async function (req, res) {
+    const username = req.body.username;
+    const otp = req.body.otp;
+    console.log('Username:', username);
+    console.log('OTP:', otp);
+    try {
+        const q = await facultyDb.query(`SELECT otp, timestamp FROM otp_master WHERE email_id = ?
+        AND status = 'active' ORDER BY timestamp DESC LIMIT 1;`, [username]
+        )
+        console.log(q);
+        const otpData = q[0][0n];
+        const oldOTP= otpData.otp;
+        const timestamp = otpData.timestamp;
+    
+        console.log(oldOTP, timestamp);
+        const currentTime = new Date().getTime();
+        if (currentTime - timestamp > 300000) {
+            console.log('The OTP has expired. Please request a new OTP.')
+            return res.render('./committee/login', { error: 'The OTP has expired. Please request a new OTP.' });
+        }
+        if (String(oldOTP) !== String(otp)) {
+            console.log('error', 'Invalid OTP.');
+            return res.render('./committee/verify', { error: 'Invalid OTP.', username });
+        }
+        else {
+            console.log('success', 'OTP verified successfully.');
+            const [result] = await facultyDb.query(
+                'UPDATE otp_master SET status = "inactive" WHERE email_id = ? AND otp = ?',
+                [username, otp]
+            );
+            const userSql = await facultyDb.query(
+                'SELECT * FROM user_type_master WHERE user_name = ? AND user_type_type= "committee"', [username]);
+            const user =userSql [0];
+            const sql = "SELECT institution_id FROM user_master WHERE user_type_id = ?";
+            const [results] = await facultyDb.query(sql, [user[0].user_type_id]);
+            console.log(results);
+            const user_id = user[0].user_type_id;
+            const role = user[0].user_type_type; // Assuming `user_type_type` indicates role
+            const institution_id = results[0].institution_id; // Assuming the query returns at least one result
+        
+            console.log('User ID from DB:', user_id);
+            console.log('Role from DB:', role);
+            console.log('Institution ID from DB:', institution_id);
+        
+            const token = jwt.sign({ user_id, role, institution_id }, process.env.JWT_SECRET, { expiresIn: '2h' });
+            console.log('Generated JWT:', token);
+            
+            res.cookie('token', token, { httpOnly: true });
+            res.redirect('/faculty/criteria-status');
+        }
+    } catch (error) {
+        console.error(error);
+    }
+})
 
 
 router.post('/login', async (req, res) => {
-    console.log("Faculty Login");
+    console.log("Faculty Login Attempt");
 
     const username = req.body.uname;
-    const email=username;
+    const email = username;  // Using username as email
     const password = req.body.password;
-    console.log("email: " + email)
+    console.log("Email/Username: " + email);
+
     try {
+        // Query the database for the user
         const result = await facultyDb.query(
-            'SELECT * FROM user_type_master WHERE user_name = ? AND user_type_type = "employee"',
+            'SELECT * FROM user_type_master WHERE user_name = ? AND (user_type_type = "employee" OR user_type_type = "committee")',
             [username]
         );
+
         const user = result[0];
-        console.log(user);
-        if (user.length > 0) {
-            const user_id = user[0].user_type_id;
-            const role = 'faculty'; // Hardcoding role for faculty
-            const status = user[0].status; // Assuming `status` is a field in `user_type_master`
-            const hashedPassword = user[0].password; // Assuming `password` is a field in `user_type_master`
-
-            const passwordMatch = await bcrypt.compare(password, hashedPassword);
-            const isDefaultPassword = await bcrypt.compare('Misfits', hashedPassword);
-
-            // Check if the user status is inactive
-            if (status === 'inactive') {
-                res.redirect(`/faculty/wait?email=${encodeURIComponent(email)}`);
-            } else if (!passwordMatch) {
-                res.render('./Faculty/login', { error: 'Invalid password', message: '', username: email});
-            } else {
-                // Check if the password is the default password
-                if (isDefaultPassword) {
-                    res.redirect(`/faculty/reset-password?user_id=${username}`);
-                } else {
-                    const token = jwt.sign({ user_id, role }, process.env.JWT_SECRET, { expiresIn: '2h' });
-                    res.cookie('token', token, { httpOnly: true });
-                    res.redirect('/Faculty/home');
-                    //res.render('./Faculty/dashboard', { data: data });
-                }
-            }
-        } else {
-            res.render('./Faculty/login', { error: 'User Does not Exists ', message: '', username: '' });
+        console.log('User from DB:', user);
+        // Check if user exists
+        if (!user || user.length === 0) {
+            console.log("User does not exist");
+            return res.render('./Faculty/login', { error: 'User does not exist', message: '', username: '' });
         }
+        
+        const user_id = user[0].user_type_id;
+        const role = user[0].user_type_type;  
+        const status = user[0].status;  
+        console.log(role)
+        const hashedPassword = user[0].password;  
+        // Check if the user status is inactive
+        if (status === 'inactive') {
+            console.log("User is inactive, redirecting to waiting page");
+            return res.redirect(`/faculty/wait?email=${encodeURIComponent(email)}`);
+        }
+
+        // Verify password
+        const passwordMatch = await bcrypt.compare(password, hashedPassword);
+        if (!passwordMatch) {
+            console.log("Password mismatch");
+            return res.render('./Faculty/login', { error: 'Invalid password', message: '', username: email });
+        }
+
+        // Check if the password is the default password
+        const isDefaultPassword = await bcrypt.compare('Misfits', hashedPassword);
+        if (isDefaultPassword) {
+            console.log("Default password detected, redirecting to reset password");
+            return res.redirect(`/faculty/reset-password?user_id=${username}`);
+        }
+        if(role === 'committee'){ 
+            console.log("Generating")
+            const otp = crypto.randomInt(100000, 999999).toString();
+
+            // Store OTP in OTP_MASTER table
+            await facultyDb.query(
+                'INSERT INTO OTP_MASTER (OTP_ID, EMAIL_ID, OTP, STATUS) VALUES (?, ?, ?, "active")',
+                [crypto.randomBytes(16).toString('hex'), username, otp]
+            );
+
+            // Send OTP to user's email
+            let mailOptions = {
+                from: process.env.SMTP_MAIL,
+                to: username, // assuming username is the user's email
+                subject: '2FA for Committee Member  Login  ',
+                text: `Your OTP is ${otp}`
+            };
+
+            transporter.sendMail(mailOptions, function(error, info){
+                if (error) {
+                    console.log(error);
+                } else {
+                    console.log('Email sent: ' + info.response);
+                }
+            });
+           res.render("./committee/verify",{username:username})
+        }
+        else{
+    
+
+        // If everything is valid, sign and set JWT token
+        const token = jwt.sign({ user_id, role }, process.env.JWT_SECRET, { expiresIn: '2h' });
+        res.cookie('token', token, { httpOnly: true });
+
+        console.log("Login successful, redirecting to Faculty home");
+        return res.redirect('/Faculty/criteria-status');}
+
     } catch (err) {
-        console.error(err);
-        res.status(500).send('Server error');
+        console.error("Server error during login: ", err);
+        return res.status(500).send('Server error');
     }
 });
+
+
+
+
+
+
+
 router.get('/logout', (req, res) => {
     // Clear the JWT token cookie
     res.clearCookie('token');
@@ -133,9 +236,9 @@ router.get('/logout', (req, res) => {
 router.get("/home", async (req, res) => {
     console.log('Faculty home');
     const userId = req.user.user_id;
-  res.render('./Faculty/home');
-
-
+  
+    // Pass the user object to the template
+    res.render('./Faculty/home');
 });
 
 

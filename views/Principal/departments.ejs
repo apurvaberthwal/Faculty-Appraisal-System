@@ -1,0 +1,221 @@
+<%- include("nav") %>
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Departments</title>
+    <style>
+        body {
+            background: linear-gradient(120deg, #3a7bd5 0%, #3a6073 100%);
+            font-family: Arial, sans-serif;
+            margin: 0;
+            padding: 0;
+        }
+
+        .container {
+            width: 90%;
+            margin: 20px auto;
+            padding: 30px;
+            background-color: rgba(255, 255, 255, 0.05);
+            color: white;
+            border-radius: 12px;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.2);
+        }
+
+        h1 {
+            font-size: 28px;
+            text-align: center;
+            margin-bottom: 30px;
+            color: #f2f2f2;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-bottom: 20px;
+            background-color: rgba(255, 255, 255, 0.05);
+        }
+
+        th, td {
+            padding: 15px;
+            text-align: left;
+            border: 1px solid #ddd;
+            color: #f0f0f0;
+            font-size: 16px;
+        }
+
+        th {
+            background-color: #3498db;
+            color: #fff;
+            cursor: pointer;
+            position: relative;
+        }
+
+        tbody tr:nth-child(even) {
+            background-color: rgba(255, 255, 255, 0.1);
+        }
+
+        tbody tr:hover {
+            background-color: rgba(255, 255, 255, 0.2);
+        }
+
+        button {
+            background-color: #fc0000;
+            color: white;
+            border: none;
+            padding: 12px 20px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 16px;
+            transition: background-color 0.3s ease;
+        }
+
+        button:hover {
+            background-color: #2980b9;
+        }
+
+        .btn-remove {
+            background-color: #fc0000;
+        }
+
+        .btn-create {
+            background-color: #2ecc71;
+            padding: 12px 20px;
+            border: none;
+            border-radius: 6px;
+            color: white;
+            cursor: pointer;
+            font-size: 16px;
+            transition: background-color 0.3s ease;
+        }
+
+        .btn-create:hover {
+            background-color: #27ae60;
+        }
+
+        .btn-toggle {
+            background-color: #3498db;
+            margin-bottom: 20px;
+            padding: 10px 15px;
+            border: none;
+            border-radius: 6px;
+            color: white;
+            cursor: pointer;
+            font-size: 16px;
+            transition: background-color 0.3s ease;
+        }
+
+        .btn-toggle:hover {
+            background-color: #2980b9;
+        }
+
+        .removed-departments {
+            display: none;
+        }
+
+        .message {
+            padding: 10px;
+            text-align: center;
+            border-radius: 5px;
+            margin-bottom: 20px;
+        }
+
+        .success-message {
+            color: green;
+            background-color: #d4edda;
+            border: 1px solid #c3e6cb;
+        }
+    </style>
+    <script>
+        function confirmRemoval(event) {
+            if (!confirm("Do you want to remove this department?")) {
+                event.preventDefault();
+            }
+        }
+
+        function toggleRemovedDepartments() {
+            const removedDepartments = document.getElementById('removed-departments');
+            const toggleBtn = document.getElementById('toggle-btn');
+
+            if (removedDepartments.style.display === 'none' || removedDepartments.style.display === '') {
+                removedDepartments.style.display = 'block';
+                toggleBtn.textContent = 'Hide Removed Departments';
+            } else {
+                removedDepartments.style.display = 'none';
+                toggleBtn.textContent = 'Show Removed Departments';
+            }
+        }
+    </script>
+</head>
+<body>
+    <% if (message) { %>
+        <div class="message success-message">
+            <%= message %>
+        </div>
+    <% } %>
+    <div class="container">
+        <center><h1>Departments</h1></center>
+
+        <% if (departments.length > 0) { %>
+            <table>
+                <thead>
+                    <tr>
+                        <th>#</th>
+                        <th>Department Name</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <% departments.forEach((department, index) => { %>
+                        <tr>
+                            <td><%= index + 1 %></td>
+                            <td><%= department.department_name %></td>
+                            <td>
+                                <form action="/principal/removeDepartment" method="POST" class="actions-form" onsubmit="confirmRemoval(event)">
+                                    <input type="hidden" name="dept_id" value="<%= department.dept_id %>">
+                                    <button type="submit" class="btn-remove">Remove</button>
+                                </form>
+                            </td>
+                        </tr>
+                    <% }) %>
+                </tbody>
+            </table>
+        <% } else { %>
+            <center>
+                <p>No departments found for your institution.</p>
+                <a href="/principal/createDepartment">
+                    <button class="btn-create">Create Department</button>
+                </a>
+            </center>
+        <% } %>
+
+        <!-- Button to toggle visibility of removed departments -->
+        <button id="toggle-btn" class="btn-toggle" onclick="toggleRemovedDepartments()">Show Removed Departments</button>
+
+        <!-- Removed Departments Table -->
+        <div id="removed-departments" class="removed-departments">
+            <% if (removedDepartments && removedDepartments.length > 0) { %>
+                <table>
+                    <thead>
+                        <tr>
+                            <th>#</th>
+                            <th>Removed Department Name</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <% removedDepartments.forEach((department, index) => { %>
+                            <tr>
+                                <td><%= index + 1 %></td>
+                                <td><%= department.department_name %></td>
+                            </tr>
+                        <% }) %>
+                    </tbody>
+                </table>
+            <% } else { %>
+                <center><p>No removed departments found.</p></center>
+            <% } %>
+        </div>
+    </div>
+</body>
+</html>

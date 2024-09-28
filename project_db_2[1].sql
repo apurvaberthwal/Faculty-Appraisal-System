@@ -403,8 +403,10 @@ CREATE TABLE committee_member_master (
     institution_id VARCHAR(50),
     start_date DATE,
     end_date DATE,
+    status ENUM('active', 'inactive') DEFAULT 'active',
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+
     FOREIGN KEY (user_id) REFERENCES user_master(user_id),
     FOREIGN KEY (institution_id) REFERENCES institution_master(institution_id)
 );
@@ -420,3 +422,25 @@ BEGIN
     SET NEW.committee_id = CONCAT('COMMIT', next_id);
 END//
 DELIMITER ;
+
+
+CREATE TABLE payment_orders (
+    order_id VARCHAR(255) PRIMARY KEY,  -- Razorpay Order ID
+    principal_email VARCHAR(255) NOT NULL,  -- Email of the principal
+    institution_id VARCHAR(255) NOT NULL,  -- Foreign key to institution_master
+    payment_status ENUM('created', 'paid', 'failed') DEFAULT 'created',  -- Payment status
+    amount INT NOT NULL,  -- Amount paid (in paise, e.g. 20000 INR = 2000000 paise)
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,  -- Timestamp when order was created
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,  -- Timestamp for updates
+    FOREIGN KEY (institution_id) REFERENCES institution_master(institution_id) ON DELETE CASCADE,
+    FOREIGN KEY (principal_email) REFERENCES user_type_master(user_name)
+);
+
+insert into department_master (department_name,institution_id) values ("Maths","INS8");
+insert into department_master (department_name,institution_id) values ("Physics","INS8");
+insert into department_master (department_name,institution_id) values ("Computer Applications","INS8");
+insert into department_master (department_name,institution_id) values ("Biology","INS8");
+
+
+
+

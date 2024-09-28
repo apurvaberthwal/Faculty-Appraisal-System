@@ -1,0 +1,140 @@
+<%- include("nav") %>
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Manage Criteria</title>
+    <style>
+        body {
+            background: linear-gradient(120deg, #3a7bd5 0%, #3a6073 100%);
+            font-family: Arial, sans-serif;
+            margin: 0;
+            padding: 0;
+        }
+        .container {
+            width: 90%;
+            margin: 20px auto;
+            padding: 30px;
+            background-color: rgba(255, 255, 255, 0.05);
+            color: white;
+            border-radius: 12px;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.2);
+        }
+        h1 {
+            font-size: 28px;
+            text-align: center;
+            margin-bottom: 30px;
+            color: #f2f2f2;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-bottom: 20px;
+            background-color: rgba(255, 255, 255, 0.05);
+        }
+        th, td {
+            padding: 15px;
+            text-align: left;
+            border: 1px solid #ddd;
+            color: #f0f0f0;
+            font-size: 16px;
+        }
+        th {
+            background-color: #3498db;
+            color: #fff;
+        }
+        tbody tr:nth-child(even) {
+            background-color: rgba(255, 255, 255, 0.1);
+        }
+        tbody tr:hover {
+            background-color: rgba(255, 255, 255, 0.2);
+        }
+        button {
+            background-color: #fc0000;
+            color: white;
+            border: none;
+            padding: 12px 20px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 16px;
+            transition: background-color 0.3s ease;
+            margin-top: 15px;
+        }
+        button:hover {
+            background-color: #2980b9;
+        }
+        .btn-remove {
+            background-color: #fc0000;
+        }
+        .btn-edit {
+            background-color: #3498db;
+        }
+        .message {
+            padding: 10px;
+            text-align: center;
+            border-radius: 5px;
+            margin-bottom: 20px;
+        }
+        .success-message {
+            color: green;
+            background-color: #d4edda;
+            border: 1px solid #c3e6cb;
+        }
+    </style>
+    <script>
+        function confirmRemoval(event) {
+            if (!confirm("Do you want to remove this criteria?")) {
+                event.preventDefault(); // Prevent form submission if user cancels
+            }
+        }
+    </script>
+</head>
+<body>
+    <% if (message) { %>
+        <div class="message success-message">
+            <%= message %>
+        </div>
+    <% } %>
+    <div class="container">
+        <center><h1>Manage Criteria</h1></center>
+        <% if (criteria.length > 0) { %>
+            <table>
+                <thead>
+                    <tr>
+                        <th>#</th>
+                        <th>Criteria Description</th>
+                        <th>Max Marks</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <% criteria.forEach((criterion, index) => { %>
+                        <tr>
+                            <td><%= index + 1 %></td>
+                            <td><%= criterion.criteria_description %></td>
+                            <td><%= criterion.max_marks %></td>
+                            <td>
+                                <a href="/committee/criteria/<%= criterion.criteria_id %>/parameters">
+                                    <button class="btn-edit">Manage</button>
+                                </a>
+                                <form action="/committee/criteria/remove" method="POST" class="actions-form" onsubmit="confirmRemoval(event)">
+                                    <input type="hidden" name="criteria_id" value="<%= criterion.criteria_id %>">
+                                    <button type="submit" class="btn-remove">Remove</button>
+                                </form>
+                            </td>
+                        </tr>
+                    <% }) %>
+                </tbody>
+            </table>
+        <% } else { %>
+            <center>
+                <p>No criteria found.</p>
+                <a href="/committee/createCriteria">
+                    <button class="btn-create">Create Criteria</button>
+                </a>
+            </center>
+        <% } %>
+    </div>
+</body>
+</html>

@@ -8,3 +8,4 @@ const facultyDb= mysql.createPool({
   });
 
 export default facultyDb;
+''

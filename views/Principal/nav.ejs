@@ -41,6 +41,9 @@
   }
 
   .navbar .dropdown .dropbtn {
+    margin-top: 0px;
+    vertical-align: middle;
+    width: fit-content;
     font-size: 16px;  
     border: none;
     outline: none;
@@ -85,6 +88,13 @@
 <nav class="navbar">
   <a href="#">Principal Portal</a>
   <a href="/principal/dashboard">Dashboard</a>
+  <div class="dropdown">
+    <button class="dropbtn">Department</button>
+    <div class="dropdown-content">
+      <a href="/principal/add-departments">Add Department</a>
+      <a href="/principal/departments">Manage Departments</a>
+    </div>
+  </div>
   <a href="/principal/approvals">
     Approvals 
     <% if (typeof pendingRequestsCount !== 'undefined' && pendingRequestsCount > 0) { %>

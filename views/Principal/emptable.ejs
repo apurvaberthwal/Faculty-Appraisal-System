@@ -1,101 +1,398 @@
 <%- include('nav') %>
+
 <!DOCTYPE html>
 <html lang="en">
-
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Employee Table</title>
+    <title>Active Employees</title>
     <style>
-         
         body {
-            font-family: Arial, sans-serif;
+            background: linear-gradient(120deg, #3a7bd5 0%, #3a6073 100%);
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
             margin: 0;
-            padding: 20px;
-            background-color: #2e2c2c;
+            padding: 0;
         }
-        
-        h1 {
-            text-align: center;
+    
+        .container {
+            width: 90%;
+            margin: 20px auto;
+            padding: 30px;
+            background-color: rgba(255, 255, 255, 0.05);
             color: white;
+            border-radius: 12px;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.2);
         }
-        
-        .search-container {
+    
+        h2 {
+            font-size: 28px;
             text-align: center;
-            margin-bottom: 20px;
+            margin-bottom: 30px;
+            color: #f2f2f2;
         }
-        
-        .search-container input[type="text"] {
+    
+        .control-group {
+            display: inline-block;
+            margin-right: 20px;
+        }
+    
+        label {
+            font-size: 14px;
+            color: #f0f0f0;
+        }
+    
+        input[type="text"], input[type="number"] {
             padding: 10px;
-            width: 300px;
-            font-size: 16px;
+            margin-bottom: 10px;
+            width: 100%;
+            max-width: 500px;
+            border: 1px solid #ddd;
+            border-radius: 6px;
+            background-color: rgba(255, 255, 255, 0.9);
+            color: #333;
+            box-sizing: border-box;
+            transition: border-color 0.3s;
         }
-        
+    
+        input[type="text"]:focus, input[type="number"]:focus {
+            border-color: #3498db;
+        }
+    
+        .controls {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+            flex-wrap: wrap;
+        }
+    
+        /* Employee Table */
         table {
             width: 100%;
             border-collapse: collapse;
-            margin: 20px 0;
-            background-color: #fff;
+            margin-bottom: 20px;
+            background-color: rgba(255, 255, 255, 0.05);
         }
-        
-        table,
-        th,
-        td {
-            border: 1px solid #ddd;
-        }
-        
-        th,
-        td {
-            padding: 12px;
+    
+        th, td {
+            padding: 15px;
             text-align: left;
+            border: 1px solid #ddd;
+            color: #f0f0f0;
+            font-size: 14px;
         }
-        
+    
         th {
-            background-color: #000080;
-            /* Dark blue */
-            color: white;
-        }
-        
-        .btn {
-            padding: 5px 10px;
-            margin: 2px;
-            border: none;
+            background-color: #3498db;
+            color: #fff;
             cursor: pointer;
-            border-radius: 4px;
+            position: relative;
         }
-        
-        .view-btn {
-            background-color: #4CAF50;
+    
+        th.sorted-asc::after, th.sorted-desc::after {
+            content: '';
+            position: absolute;
+            right: 10px;
+            top: 50%;
+            transform: translateY(-50%);
+        }
+    
+        th.sorted-asc::after {
+            content: " ▲";
+        }
+    
+        th.sorted-desc::after {
+            content: " ▼";
+        }
+    
+        tbody tr:nth-child(even) {
+            background-color: rgba(255, 255, 255, 0.1);
+        }
+    
+        tbody tr:hover {
+            background-color: rgba(255, 255, 255, 0.2);
+        }
+    
+        /* Checkboxes */
+        .checkbox input[type="checkbox"] {
+            cursor: pointer;
+        }
+    
+        .checkbox input[type="checkbox"]:disabled {
+            cursor: not-allowed;
+        }
+    
+        /* Button Styling */
+        button {
+            background-color: #3498db;
             color: white;
+            border: none;
+            padding: 12px 20px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 16px;
+            transition: background-color 0.3s ease;
         }
-        
-        .approve-btn {
-            background-color: #008CBA;
-            color: white;
+    
+        button:hover {
+            background-color: #2980b9;
         }
-        
-        .pending-btn {
-            background-color: #f44336;
-            color: white;
-        }
-        .welcome-message {
+    
+        .btn-submit {
+            width: 100%;
+            max-width: 200px;
+            margin: 20px auto;
             text-align: center;
-            color: white;
-            font-size: 20px;
+            display: block;
         }
+    
+        /* Loading Spinner Styles */
+        .loading-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.6);
+            color: white;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            z-index: 9999;
+        }
+    
+        .spinner {
+            border: 8px solid rgba(255, 255, 255, 0.2); /* Light grey */
+            border-top: 8px solid #3498db; /* Blue */
+            border-radius: 50%;
+            width: 60px;
+            height: 60px;
+            animation: spin 1s linear infinite;
+        }
+    
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+    
+        /* Responsive Design */
+        @media (max-width: 768px) {
+            .controls {
+                flex-direction: column;
+            }
+    
+            .control-group {
+                margin-bottom: 15px;
+            }
+    
+            input[type="text"], input[type="number"] {
+                max-width: 100%;
+            }
+    
+            button {
+                width: 100%;
+            }
+        }
+    
     </style>
+ 
 </head>
-
-
-   
-
-  
-
 <body>
-    <h1>Welcome to the Principal's Dashboard</h1>
-    <p class="welcome-message">Here you can manage school activities, view reports, and more.</p>
+    <div class="container">
+       
 
-   
+        <% if (employees.length === 0) { %>
+            <h2>No employees have been added yet.</h2>
+        <% } else { %>
+            <h2>Employees</h2>
+
+            <!-- Single Search Field -->
+            <div class="control-group">
+                <label for="search-all">Search</label>
+                <input type="text" id="search-all" placeholder="Search by Name, Employee ID, or Department" oninput="filterAndSort()" width="500px">
+            </div>
+
+        
+
+            <!-- Employee Table -->
+            <table id="employee-table">
+                <thead>
+                    <tr>
+                        <th onclick="setSort(0)">Employee ID</th>
+                        <th onclick="setSort(1)">Name</th>
+                        <th onclick="setSort(2)">Department</th>
+                        <th onclick="setSort(3)">Email</th>
+                        <th onclick="setSort(4)">Start Date</th>
+                        <th>Type</th>
+                        <th>Status</th>
+                    </tr>
+                </thead>
+                <tbody id="employee-body">
+                    <% employees.forEach(employee => { %>
+                        <tr>
+                            <td><%= employee.emp_id %></td>
+                            <td><%= employee.first_name %> <%= employee.last_name %></td>
+                            <td><%= employee.department_name %></td>
+                            <td><%= employee.email_id %></td>
+                            <td>
+                                <% 
+                                let date = new Date(employee.start_date);
+                                let formattedDate = date.toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' });
+                                %>
+                                <%= formattedDate %>
+                            </td>
+                            <td>
+                                <%= employee.type %>
+                            </td>
+                            <td>  <%= employee.status %>
+                            </td>
+                        </tr>
+                    <% }) %>
+                </tbody>
+            </table>
+
+            <!-- Submit Button -->
+        <% } %>
+    </div>
+
+    <script>
+        let sortColumn = -1;  
+        let sortDirection = 1; 
+
+        function filterAndSort() {
+            const searchValue = document.getElementById('search-all').value.toLowerCase();
+            const rows = Array.from(document.querySelectorAll('#employee-body tr'));
+
+            rows.forEach(row => {
+                const [id, name, dept] = row.cells;
+                const matches = id.textContent.toLowerCase().includes(searchValue) ||
+                                name.textContent.toLowerCase().includes(searchValue) ||
+                                dept.textContent.toLowerCase().includes(searchValue);
+
+                row.style.display = matches ? '' : 'none';
+            });
+
+            if (sortColumn >= 0) {
+                sortTable(sortColumn);
+            }
+        }
+
+        function setSort(columnIndex) {
+            if (sortColumn === columnIndex) {
+                sortDirection *= -1;
+            } else {
+                sortColumn = columnIndex;
+                sortDirection = 1;
+            }
+            sortTable(columnIndex);
+        }
+
+        function sortTable(columnIndex) {
+            const table = document.getElementById('employee-table');
+            const rows = Array.from(document.querySelectorAll('#employee-body tr')).filter(row => row.style.display !== 'none');
+            const isNumeric = !isNaN(rows[0].cells[columnIndex].textContent.trim());
+
+            rows.sort((a, b) => {
+                const aText = a.cells[columnIndex].textContent.trim();
+                const bText = b.cells[columnIndex].textContent.trim();
+
+                if (isNumeric) {
+                    return sortDirection * (parseFloat(aText) - parseFloat(bText));
+                } else {
+                    return sortDirection * aText.localeCompare(bText);
+                }
+            });
+
+            rows.forEach(row => table.tBodies[0].appendChild(row));
+            updateTableHeaders(columnIndex);
+        }
+
+        function updateTableHeaders(columnIndex) {
+            const headers = document.querySelectorAll('th');
+            headers.forEach(header => header.classList.remove('sorted-asc', 'sorted-desc'));
+
+            if (sortColumn >= 0) {
+                headers[sortColumn].classList.add(sortDirection === 1 ? 'sorted-asc' : 'sorted-desc');
+            }
+        }
+
+        function updateCheckboxes() {
+            const numMembers = parseInt(document.getElementById('num-committee').value);
+            const checkboxes = document.querySelectorAll('input[name="committee-members"]');
+
+            if (!numMembers || isNaN(numMembers)) {
+                checkboxes.forEach(checkbox => checkbox.disabled = true);
+            } else {
+                const checkedCount = document.querySelectorAll('input[name="committee-members"]:checked').length;
+
+                checkboxes.forEach(checkbox => {
+                    checkbox.disabled = checkedCount >= numMembers && !checkbox.checked;
+                });
+            }
+        }
+
+        document.getElementById('submit-committee').addEventListener('click', async function() {
+    const selectedMembers = Array.from(document.querySelectorAll('input[name="committee-members"]:checked'))
+        .map(checkbox => checkbox.value);
+    const numMembers = document.getElementById('num-committee').value;
+    const tenure = document.getElementById('tenure').value;
+
+    if (selectedMembers.length !== parseInt(numMembers)) {
+        alert('Please select the correct number of committee members.');
+        return;
+    }
+
+    if (isNaN(tenure) || tenure <= 0) {
+        alert('Please enter a valid tenure.');
+        return;
+    }
+
+    document.getElementById('loading').style.display = 'flex';
+
+    try {
+        const response = await fetch('/principal/submit-committee', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+                committeeMembers: selectedMembers,
+                tenure: tenure,
+            })
+        });
+        const data = await response.json();
+
+        if (data.success) {
+            alert('Committee members submitted successfully!');
+            
+            // Clear the form
+            document.getElementById('num-committee').value = '';
+            document.getElementById('tenure').value = '';
+            document.querySelectorAll('input[name="committee-members"]').forEach(cb => cb.checked = false);
+
+            // Fetch the updated employee list
+            fetchEmployeeData();
+        } else {
+            alert('Failed to submit committee members.');
+        }
+    } catch (error) {
+        alert('An error occurred. Please try again.');
+    } finally {
+        document.getElementById('loading').style.display = 'none';
+    }
+});
+
+async function fetchEmployeeData() {
+    try {
+        const response = await fetch('/principal/createCommittee');
+        const data = await response.text();
+        document.querySelector('body').innerHTML = data;
+    } catch (error) {
+        console.error('Failed to fetch employee data:', error);
+    }
+}
+
+    </script>
 </body>
-
 </html>

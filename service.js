@@ -217,7 +217,7 @@ export async function sendCommitteeEmails(members) {
               Institute: ${member.institution_name}
               Department: ${member.department_name}
               Start Date: ${new Date(member.start_date).toLocaleDateString()}
-
+              End Date: ${new Date(member.end_date).toLocaleDateString()}
               Best Regards,
               Your Institute`
           };

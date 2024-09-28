@@ -1,10 +1,9 @@
+import bcrypt from 'bcryptjs';
 import express from 'express';
 import jwt from 'jsonwebtoken';
-
 import facultyDb from '../faculty.db.js';
 import { authorizeRole, jwtMiddleware } from '../service.js';
 const router = express.Router();
-
 router.use(jwtMiddleware);
 router.get('/login', (req, res) => {
     console.log("Committee");
@@ -30,6 +29,7 @@ router.use(async (req, res, next) => {
             }
 
             res.locals.loggedIn = true;
+            res.locals.user=user;
         } catch (err) {
             console.error('JWT verification error:', err);
             res.clearCookie('token');
@@ -61,12 +61,14 @@ router.post('/login', async (req, res) => {
 
     try {
         const result = await facultyDb.query(
-            'SELECT * FROM user_type_master WHERE user_name = ? AND password = ? AND user_type_type= "committee"',
-            [username, password]
+            'SELECT * FROM user_type_master WHERE user_name = ?  AND user_type_type= "committee"',
+            [username]
         );
         const user = result[0]; // Access the actual user data
         console.log('User from DB:',user);
-        if (user.length > 0) {
+        const hashedPassword = user[0].password;
+        const passwordMatch = await bcrypt.compare(password, hashedPassword);
+        if (user.length > 0 && hashedPassword) {
             const sql = "SELECT institution_id FROM user_master WHERE user_type_id = ?";
             const [results] = await facultyDb.query(sql, [user[0].user_type_id]);
             console.log(results);
@@ -497,6 +499,69 @@ router.post("/addParams", async (req, res) => {
 
 
 
+// Get all criteria
+router.get('/criteria', async (req, res) => {
+    try {
+        const [criteria] = await facultyDb.query('SELECT * FROM criteria_master WHERE status = "active"');
+        res.render('./committee/criteria', {
+            criteria: criteria,
+            message: req.query.message || null
+        });
+    } catch (error) {
+        console.error('Error fetching criteria:', error);
+        res.status(500).send('Internal Server Error');
+    }
+});
+router.post('/criteria/remove', async (req, res) => {
+    const { criteria_id } = req.body;
+    try {
+        await facultyDb.query('UPDATE criteria_master SET status = "inactive" WHERE criteria_id = ?', [criteria_id]);
+        res.redirect('/committee/criteria?message=Criteria removed successfully');
+    } catch (error) {
+        console.error('Error removing criteria:', error);
+        res.status(500).send('Internal Server Error');
+    }
+})
+
+// Get parameters for a specific criteria
+router.get('/criteria/:criteria_id/parameters', async (req, res) => {
+    const { criteria_id } = req.params;
+    try {
+        const [parameters] = await facultyDb.query('SELECT * FROM c_parameter_master WHERE criteria_id = ? AND status = "active"', [criteria_id]);
+        res.render('./committee/parameters', {
+            criteria_id: criteria_id,
+            parameters: parameters,
+            message: req.query.message || null
+        });
+    } catch (error) {
+        console.error('Error fetching parameters:', error);
+        res.status(500).send('Internal Server Error');
+    }
+});
+
+// Add new parameter
+router.post('/parameters/add', async (req, res) => {
+    const { parameter_description_type, parameter_description, parameter_max_marks, criteria_id } = req.body;
+    try {
+        await facultyDb.query('INSERT INTO c_parameter_master (parameter_description_type, parameter_description, parameter_max_marks, criteria_id) VALUES (?, ?, ?, ?)', [parameter_description_type, parameter_description, parameter_max_marks, criteria_id]);
+        res.redirect(`/committee/criteria/${criteria_id}/parameters?message=Parameter added successfully`);
+    } catch (error) {
+        console.error('Error adding parameter:', error);
+        res.status(500).send('Internal Server Error');
+    }
+});
+
+// Remove parameter
+router.post('/parameters/remove', async (req, res) => {
+    const { c_parameter_id, criteria_id } = req.body;
+    try {
+        await facultyDb.query('UPDATE c_parameter_master SET status = "inactive" WHERE c_parameter_id = ?', [c_parameter_id]);
+        res.redirect(`/committee/criteria/${criteria_id}/parameters?message=Parameter removed successfully`);
+    } catch (error) {
+        console.error('Error removing parameter:', error);
+        res.status(500).send('Internal Server Error');
+    }
+});
 
 
 

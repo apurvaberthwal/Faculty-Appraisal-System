@@ -1,0 +1,62 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Payment Page</title>
+</head>
+<body>
+    <h2>Payment for Principal Registration - ₹20,000</h2>
+
+    <form id="paymentForm">
+        <button id="payButton" type="button">Pay ₹20,000</button>
+    </form>
+
+    <script src="https://checkout.razorpay.com/v1/checkout.js"></script>
+    <script>
+    document.getElementById('payButton').onclick = function(e) {
+        e.preventDefault();
+
+        // Fetch order details from your backend
+        fetch('/principal/payment', {
+            method: 'POST'
+        })
+        .then(response => response.json())
+        .then(orderData => {
+            const options = {
+                "key": "<%= razorpayId %>", // Your Razorpay key_id
+                "amount": orderData.amount, // Amount in paise
+                "currency": orderData.currency,
+                "name": "Your Service Name",
+                "description": "Service Fee for Principal",
+                "order_id": orderData.orderId, // Order ID from backend
+                "handler": function(response) {
+                    // Send payment details to server for verification
+                    fetch('/principal/verify-payment', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                            order_id: orderData.orderId,
+                            payment_id: response.razorpay_payment_id,
+                            razorpay_signature: response.razorpay_signature
+                        })
+                    })
+                    .then(res => res.text())
+                    .then(result => alert(result))
+                    .catch(error => alert("Payment verification failed"));
+                },
+                "prefill": {
+                    "name": "Principal Name",
+                    "email": "@gmail.com",
+                    "contact": "1234567890"
+                }
+            };
+
+            const rzp1 = new Razorpay(options);
+            rzp1.open();
+        })
+        .catch(error => console.log('Error:', error));
+    }
+    </script>
+</body>
+</html>

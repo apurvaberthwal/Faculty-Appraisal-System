@@ -6,31 +6,29 @@
     <title>Add Department</title>
     <style>
         body {
-            margin: 0;
-            background: linear-gradient(120deg, #3a7bd5 0%, #3a6073 100%);
-            height: 100vh;
-            
-        }
-.main{
-    display: flex;
-            flex-direction: column;
-            font-family: Arial, sans-serif;
-            align-items: center;
-            justify-content: center;
-            margin-top: 30px;
+        margin: 0;
+        background: linear-gradient(120deg, #3a7bd5 0%, #3a6073 100%);
+        height: 100vh;
+        font-family: Arial, sans-serif;
+        display: flex; 
+        flex-direction: column;
+    }
 
-}
-        .container {
-            width: 90%;
-            max-width: 600px;
-            padding: 20px;
-            background-color: rgba(0, 0, 0, 0.7);
-            color: #D6BD98;
-            border-radius: 8px;
-            box-shadow: 0px 0px 10px 0px rgba(0, 0, 0, 0.1);
-            box-sizing: border-box;
-        }
-
+    .container {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        width: 90%;
+        max-width: 600px;
+        padding: 20px;
+        background-color: rgba(0, 0, 0, 0.7);
+        color: #D6BD98;
+        border-radius: 8px;
+        box-shadow: 0px 0px 10px 0px rgba(0, 0, 0, 0.1);
+        box-sizing: border-box;
+        margin: auto;
+    }
         h1 {
             color: #D6BD98;
             padding-bottom: 10px;
@@ -40,6 +38,8 @@
         form {
             display: flex;
             flex-direction: column;
+            width: 100%;
+            align-items: center;
         }
 
         label {
@@ -70,17 +70,11 @@
             font-size: 16px;
             margin-top: 10px;
             transition: background-color 0.3s;
-            width: 400px;
+            width: 80%;
         }
 
         button:hover {
             background-color: #218838;
-        }
-
-        nav {
-            position: sticky;
-            top: 0;
-            z-index: 1000;
         }
 
         @media (max-width: 600px) {
@@ -88,33 +82,56 @@
                 width: 100%;
                 margin: 0 10px;
             }
+        }
 
-            
+        .message {
+            padding: 10px;
+            text-align: center;
+            border-radius: 5px;
+            margin-bottom: 20px;
+        }
+
+        .success-message {
+            color: green;
+            background-color: #d4edda;
+            border: 1px solid #c3e6cb;
+        }
+
+        .error-message {
+            color: red;
+            background-color: #f8d7da;
+            border: 1px solid #f5c6cb;
+        }
+
+        .register-link {
+            margin-top: 10px;
+            text-align: center;
         }
     </style>
 </head>
 <body>
-    <!-- Include nav.ejs at the top of the body -->
-    <%- include("nav") %>
-    <div class="main">
-    <div class="container">
-        <h1>Add Department</h1>
-        <form action="/add-department" method="POST">
-            <label for="institute_id">Select Institute:</label>
-            <select id="institute_id" name="institute_id" required>
-                <option value="">Select an institute</option>
-                <!-- Replace the following options with dynamic options from your server/database -->
-                <option value="1">Institute A</option>
-                <option value="2">Institute B</option>
-                <option value="3">Institute C</option>
-            </select>
+  <%- include("nav") %>
 
+    <% if (success) { %>
+    <div class="message success-message">
+        <%= success %>
+    </div>
+    <% } %>
+    <% if (error) { %>
+    <div class="message error-message">
+        <%= error %>
+    </div>
+    <% } %>
+
+    <div class="container">
+        
+        <h1>Add Department</h1>
+        <form action="/principal/add-departments" method="POST">
             <label for="department_name">Department Name:</label>
             <input type="text" id="department_name" name="department_name" required>
 
             <button type="submit">Add Department</button>
         </form>
     </div>
-</div>
 </body>
 </html>

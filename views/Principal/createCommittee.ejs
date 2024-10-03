@@ -226,6 +226,24 @@ th {
             flex-direction: column;
             
     }
+    .control-group select {
+    padding: 10px;
+    width: 100%;
+    max-width: 300px;
+    margin-bottom: 10px;
+    border-radius: 6px;
+    background-color: rgba(255, 255, 255, 0.9);
+    border: 1px solid #ddd;
+    color: #333;
+    box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.1);
+    transition: border-color 0.3s;
+}
+
+.control-group select:focus {
+    border-color: #3498db;
+    box-shadow: 0 0 8px rgba(52, 152, 219, 0.5);
+}
+
    </style> 
  
 </head>
@@ -235,7 +253,11 @@ th {
             <h2>No employees have been added yet.</h2>
         <% } else { %>
             <h2>Create Committee</h2>
-    
+            <div id="loading" class="loading-overlay" style="display: none;">
+                <div class="spinner"></div>
+                <p>Loading, please wait...</p>
+            </div>
+        
             <!-- Committee Selection and Search Fields Aligned Horizontally -->
             <div class="controls">
                 <div class="control-group">
@@ -247,7 +269,18 @@ th {
                     <label for="num-committee">Number of Committee Members</label>
                     <input type="number" id="num-committee" min="1" max="10" placeholder="Enter number of members" oninput="updateCheckboxes()">
                 </div>
-    
+            
+                <div class="control-group">
+                    <label for="appraisal-cycle">Appraisal Cycle</label>
+                    <select id="appraisal-cycle" name="appraisal_cycle">
+                        <option value="" disabled selected>Select Appraisal Cycle</option>
+                        <option value="cycle1">Cycle 1</option>
+                        <option value="cycle2">Cycle 2</option>
+                        <option value="cycle3">Cycle 3</option>
+                    </select>
+                </div>
+                
+
                 <!-- Start Date and End Date Fields -->
                 <div class="control-group">
                     <label for="start-date">Start Date</label>
@@ -270,7 +303,7 @@ th {
                         <th onclick="setSort(3)">Email</th>
                         <th onclick="setSort(4)">Start Date</th>
                         <th style="width: 100px;">Select Committee Member</th>
-                    </tr>
+                    </tr>                    
                 </thead>
                 <tbody id="employee-body">
                     <% employees.forEach(employee => { %>

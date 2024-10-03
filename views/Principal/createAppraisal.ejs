@@ -1,0 +1,170 @@
+<%- include('nav') %>
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Create Appraisal Cycle</title>
+    <style>
+    /* Your CSS styling */
+    body {
+        background: linear-gradient(120deg, #3a7bd5 0%, #3a6073 100%);
+        font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        margin: 0;
+        padding: 0;
+    }
+
+    .container {
+        width: 50%;
+        margin: 20px auto;
+        padding: 30px;
+        background-color: rgba(255, 255, 255, 0.1);
+        color: white;
+        border-radius: 12px;
+        box-shadow: 0 4px 20px rgba(0, 0, 0, 0.2);
+        transition: box-shadow 0.3s;
+    }
+
+    .container:hover {
+        box-shadow: 0 8px 30px rgba(0, 0, 0, 0.4);
+    }
+
+    h2 {
+        font-size: 28px;
+        text-align: center;
+        margin-bottom: 30px;
+        color: #f2f2f2;
+        text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.2);
+    }
+
+    .control-group label {
+        font-size: 16px;
+        color: #f0f0f0;
+        font-weight: bold;
+    }
+
+    .control-group input[type="text"],
+    .control-group input[type="date"],
+    .control-group select {
+        padding: 10px;
+        width: 100%;
+        margin-bottom: 12px;
+        margin-top: 7px;
+        border-radius: 6px;
+        background-color: rgba(255, 255, 255, 0.9);
+        border: 1px solid #ddd;
+        color: #333;
+        box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.1);
+        transition: border-color 0.3s;
+    }
+
+    .control-group select {
+        padding: 10px;
+        height: 45px;
+    }
+
+    .control-group input:focus,
+    .control-group select:focus {
+        border-color: #3498db;
+        box-shadow: 0 0 8px rgba(52, 152, 219, 0.5);
+    }
+
+    .control-group {
+        margin-bottom: 20px;
+    }
+
+    button {
+        background-color: #3498db;
+        color: white;
+        border: none;
+        padding: 12px 20px;
+        border-radius: 6px;
+        cursor: pointer;
+        font-size: 16px;
+        transition: background-color 0.3s ease, transform 0.2s;
+        width: 100%;
+    }
+
+    button:hover {
+        background-color: #2980b9;
+        transform: scale(1.05);
+    }
+
+    .btn-submit {
+        margin-top: 20px;
+        text-align: center;
+        display: block;
+    }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h2>Create Appraisal Cycle</h2>
+        <form id="appraisal-form">
+            <div class="control-group">
+                <label for="cycle-name">Appraisal Cycle Name</label>
+                <input type="text" id="cycle-name" name="cycle_name" placeholder="Enter Appraisal Cycle Name" required>
+            </div>
+
+            <div class="control-group">
+                <label for="department-name">Department Name</label>
+                <select id="department-name" name="department_name" required>
+                    <option value="all">All Departments</option>
+                    <% departments.forEach(department => { %>
+                        <option value="<%= department.department_name %>"><%= department.department_name %></option>
+                    <% }) %>
+                </select>
+            </div>
+
+            <div class="control-group">
+                <label for="start-date">Start Date</label>
+                <input type="date" id="start-date" name="start_date" required>
+            </div>
+
+            <div class="control-group">
+                <label for="end-date">End Date</label>
+                <input type="date" id="end-date" name="end_date" required>
+            </div>
+
+            <button class="btn-submit" type="submit">Submit</button>
+        </form>
+    </div>
+
+    <script>
+        document.getElementById('appraisal-form').addEventListener('submit', async function(event) {
+            event.preventDefault();
+
+            const cycleName = document.getElementById('cycle-name').value;
+            const departmentName = document.getElementById('department-name').value;
+            const startDate = document.getElementById('start-date').value;
+            const endDate = document.getElementById('end-date').value;
+
+            try {
+                const response = await fetch('/appraisal/create', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        cycle_name: cycleName,
+                        department_name: departmentName,
+                        start_date: startDate,
+                        end_date: endDate
+                    }),
+                });
+
+                const data = await response.json();
+                if (data.success) {
+                    alert('Appraisal cycle created successfully!');
+                    document.getElementById('appraisal-form').reset();
+                } else {
+                    alert('Failed to create appraisal cycle.');
+                }
+            } catch (error) {
+                alert('An error occurred. Please try again.');
+            }
+        });
+    </script>
+</body>
+</html>

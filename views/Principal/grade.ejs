@@ -1,0 +1,152 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Grading Table</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: #f0f8ff;
+            margin: 0;
+            padding: 0;
+            color: #333;
+        }
+        h1 {
+            text-align: center;
+            margin-top: 20px;
+            font-size: 2.5em;
+            color: #1E90FF;
+            letter-spacing: 1px;
+            text-transform: uppercase;
+        }
+        table {
+            width: 50%;
+            margin: 30px auto;
+            border-collapse: collapse;
+            background-color: #fff;
+            border-radius: 8px;
+            overflow: hidden;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+        }
+        th, td {
+            padding: 15px;
+            border: 1px solid #ddd;
+            text-align: center;
+            font-size: 1.1em;
+        }
+        th {
+            background-color: #1E90FF;
+            color: white;
+            text-transform: uppercase;
+            font-weight: bold;
+            letter-spacing: 1px;
+        }
+        td {
+            background-color: #e6f7ff;
+        }
+        tr:nth-child(even) td {
+            background-color: #cceeff;
+        }
+        tr:hover td {
+            background-color: #b3e0ff;
+            cursor: pointer;
+        }
+        input {
+            width: 80px;
+            padding: 5px;
+            text-align: center;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            font-size: 1em;
+        }
+        .error {
+            color: red;
+            text-align: center;
+            margin-top: 10px;
+        }
+    </style>
+</head>
+<body>
+
+    <h1>Grading System</h1>
+
+    <div class="error" id="error-message"></div>
+
+    <table>
+        <thead>
+            <tr>
+                <th>Grade</th>
+                <th>Min</th>
+                <th>Max</th>
+            </tr>
+        </thead>
+        <tbody>
+            <tr>
+                <td>A</td>
+                <td><input type="number" id="min-a" min="0" oninput="validateGrades()"></td>
+                <td><input type="number" id="max-a" min="0" oninput="validateGrades()"></td>
+            </tr>
+            <tr>
+                <td>B</td>
+                <td><input type="number" id="min-b" min="0" oninput="validateGrades()"></td>
+                <td><input type="number" id="max-b" min="0" oninput="validateGrades()"></td>
+            </tr>
+            <tr>
+                <td>C</td>
+                <td><input type="number" id="min-c" min="0" oninput="validateGrades()"></td>
+                <td><input type="number" id="max-c" min="0" oninput="validateGrades()"></td>
+            </tr>
+            <tr>
+                <td>D</td>
+                <td><input type="number" id="min-d" min="0" oninput="validateGrades()"></td>
+                <td><input type="number" id="max-d" min="0" oninput="validateGrades()"></td>
+            </tr>
+        </tbody>
+    </table>
+
+    <script>
+        function validateGrades() {
+            const minA = document.getElementById('min-a').value;
+            const maxA = document.getElementById('max-a').value;
+            const minB = document.getElementById('min-b').value;
+            const maxB = document.getElementById('max-b').value;
+            const minC = document.getElementById('min-c').value;
+            const maxC = document.getElementById('max-c').value;
+            const minD = document.getElementById('min-d').value;
+            const maxD = document.getElementById('max-d').value;
+
+            let errorMessage = "";
+
+            // Ensure Min of a grade is greater than Max of the lower grade
+            if (minA && maxB && parseInt(minA) <= parseInt(maxB)) {
+                errorMessage += "Min of Grade A must be greater than Max of Grade B.\n";
+            }
+            if (minB && maxC && parseInt(minB) <= parseInt(maxC)) {
+                errorMessage += "Min of Grade B must be greater than Max of Grade C.\n";
+            }
+            if (minC && maxD && parseInt(minC) <= parseInt(maxD)) {
+                errorMessage += "Min of Grade C must be greater than Max of Grade D.\n";
+            }
+
+            // Ensure Min is greater than Max within the same grade
+            if (minA && maxA && parseInt(minA) >= parseInt(maxA)) {
+                errorMessage += "Min of Grade A must be less than Max of Grade A.\n";
+            }
+            if (minB && maxB && parseInt(minB) >= parseInt(maxB)) {
+                errorMessage += "Min of Grade B must be less than Max of Grade B.\n";
+            }
+            if (minC && maxC && parseInt(minC) >= parseInt(maxC)) {
+                errorMessage += "Min of Grade C must be less than Max of Grade C.\n";
+            }
+            if (minD && maxD && parseInt(minD) >= parseInt(maxD)) {
+                errorMessage += "Min of Grade D must be less than Max of Grade D.\n";
+            }
+
+            // Display error message
+            document.getElementById("error-message").innerText = errorMessage;
+        }
+    </script>
+
+</body>
+</html>

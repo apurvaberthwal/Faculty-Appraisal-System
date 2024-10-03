@@ -134,7 +134,7 @@ CREATE TABLE c_parameter_master (
     parameter_description_type enum ('required' ,'optional') default 'required',
     parameter_description varchar(250),
     parameter_max_marks INT,
-    criteria_id VARCHAR(50),
+    criteria_id VARCHAR(50) ,
     `timestamp` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     status ENUM('active', 'inactive') DEFAULT 'active',
     FOREIGN KEY (criteria_id) REFERENCES criteria_master(criteria_id)
@@ -152,6 +152,37 @@ BEGIN
 END//
 DELIMITER ;
 
+CREATE TABLE apprisal_master 
+(
+  id INT AUTO_INCREMENT PRIMARY KEY,
+  apprisal_id VARCHAR2(10) unique,
+  apprisal_cycle_name varchar(250),
+  start_date date,
+  end_date date,
+  institution_id VARCHAR(50),
+  dept_id varchar(50),
+   criteria_id VARCHAR(50) ,
+    FOREIGN KEY (criteria_id) REFERENCES criteria_master(criteria_id)
+    FOREIGN KEY (institution_id) REFERENCES institution_master(institution_id),
+    FOREIGN KEY (dept_id) REFERENCES department_master(dept_id),
+    timestamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    status ENUM('active', 'inactive') DEFAULT 'active',
+    
+);
+
+DELIMITER //
+CREATE TRIGGER before_apprisal_master 
+BEFORE INSERT ON apprisal_master 
+FOR EACH ROW
+BEGIN
+    DECLARE next_id INT;
+    SET next_id = (SELECT AUTO_INCREMENT FROM information_schema.TABLES WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'apprisal_master ');
+    SET NEW.review_id = CONCAT('APPR', next_id);
+END//
+DELIMITER ;
+
+
+
 -- Table for self appraisal score master
 CREATE TABLE self_appraisal_score_master (
     id INT AUTO_INCREMENT PRIMARY KEY,
@@ -159,9 +190,10 @@ CREATE TABLE self_appraisal_score_master (
     user_id VARCHAR(50), FOREIGN KEY (user_id) REFERENCES user_master(user_id),
     marks_by_emp INT,   
     c_parameter_id VARCHAR(50),
+    apprisal_id varchar(10),
     timestamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     status ENUM('active', 'inactive') DEFAULT 'active',
-   
+    FOREIGN KEY (apprisal_id) REFERENCES apprisal_master(apprisal_id)
     FOREIGN KEY (c_parameter_id) REFERENCES c_parameter_master(c_parameter_id)
 );
 
@@ -206,8 +238,6 @@ END//
 DELIMITER ;
 
 
-
-
 CREATE TABLE document_master (
     id INT AUTO_INCREMENT PRIMARY KEY,
     document_id VARCHAR(50) UNIQUE,
@@ -231,8 +261,44 @@ BEGIN
 END//
 DELIMITER ;
 
+create table review_master(
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    review_id VARCHAR(50) UNIQUE,
+    user_id VARCHAR(250),FOREIGN KEY (user_id) REFERENCES user_master(user_id),
+    criteria_id VARCHAR(50),
+    FOREIGN KEY (criteria_id) REFERENCES criteria_master(criteria_id),
+    timestamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    status ENUM('active', 'inactive') DEFAULT 'active'
+);
+
+DELIMITER //
+CREATE TRIGGER before_review_master
+BEFORE INSERT ON review_master
+FOR EACH ROW
+BEGIN
+    DECLARE next_id INT;
+    SET next_id = (SELECT AUTO_INCREMENT FROM information_schema.TABLES WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'review_master');
+    SET NEW.review_id = CONCAT('REI', next_id);
+END//
+DELIMITER ;
 
 
+
+
+
+
+
+CREATE TABLE grade_master 
+(
+  id INT AUTO_INCREMENT PRIMARY KEY,
+  grade_id VARCHAR2(10) unique,
+  grade_name varchar(250),
+  min_marks VARCHAR(50),
+  max_marks varchar(50),
+    timestamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    status ENUM('active', 'inactive') DEFAULT 'active',
+    
+);
 
 
 

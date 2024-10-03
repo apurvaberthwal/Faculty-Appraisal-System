@@ -458,14 +458,15 @@ router.get("/addParams", async (req, res) => {
     });
     
 router.post("/addParams", async (req, res) => {
-    const criteria = req.body.criteria_name;
-    const parameter = req.body.parameter;
-    const totalMarks = req.body.totalMarks;
-    const paramType = req.body.param_type; // 'required' or 'optional'
+    const criteria_id = req.body.criteria_id;
+    const parameter = req.body.parameter_description;
+    const totalMarks = req.body.parameter_max_marks;
+    const paramType = req.body.parameter_description_type; // 'required' or 'optional'
+    console.log(criteria_id + ": " + parameter + " " + totalMarks + " " + paramType);
     
     const data1 = await facultyDb.query('SELECT criteria_description FROM criteria_master');
      // Validate inputs
-     if (!criteria || !parameter || (paramType === 'required' && (!totalMarks || isNaN(totalMarks) || totalMarks <= 0))) {
+     if (!criteria_id || !parameter || (paramType === 'required' && (!totalMarks || isNaN(totalMarks) || totalMarks <= 0))) {
         return res.render('./committee/criteriaSelect', { 
             errorMessage: 'All fields are required and Total Marks must be a positive number if the parameter is required!', 
             successMessage: "", 
@@ -473,23 +474,15 @@ router.post("/addParams", async (req, res) => {
         });
     }
     
-      
-    
-        try {
+    try {
 
-            const data = await facultyDb.query('SELECT criteria_id FROM criteria_master WHERE criteria_description = ?', [criteria]);
-            if (!data) {
-                console.log('No data returned from the query');
-                return res.render('./committee/criteriaSelect', { errorMessage: 'No data returned from the query', data: data1[0],successMessage:"" });
-            }
-    
-            const criteria_id = data[0][0].criteria_id;
+            
             await facultyDb.query(
                 'INSERT INTO c_parameter_master (criteria_id, parameter_description, parameter_max_marks, parameter_description_type) VALUES (?, ?, ?, ?)',
                 [criteria_id, parameter, totalMarks || null, paramType]
             );    
-    
-            res.render('./committee/criteriaSelect',{successMessage:'Parameter added successfully',errorMessage:"", data: data1[0]});
+            res.redirect(`/committee/criteria/${criteria_id}/parameters?message=parameter added successfully`);    
+           
         } catch (error) {
             console.error('Error executing query', error);
             res.render('./committee/criteriaSelect', {successMessage:"", errorMessage: 'Error inserting data. Please try again.',  data: data1[0] });

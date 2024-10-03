@@ -840,8 +840,43 @@ router.post('/removeDepartment', async (req, res) => {
     }
 });
 
+router.get("/createAppraisal", async (req, res) => {
+    try {
+        const instituteId = req.user.institution_id;
+        const [departments] = await facultyDb.query(
+            'SELECT * FROM department_master WHERE institution_id = ? AND status="active"',
+            [instituteId]
+        );
+        res.render('./principal/createAppraisal', { departments });
+    } catch (error) {
+        console.error('Error fetching departments:', error);
+        res.status(500).send('Internal Server Error');
+    }
+})
+
+router.get("/sessionActivate", async (req, res) => {
+    try {
+        const instituteId = req.user.institution_id;
+        const query = `
+        SELECT cm.user_id, u.first_name, u.last_name, u.email_id, cm.start_date, cm.end_date ,cm.status
+        FROM committee_member_master cm
+        JOIN user_master u ON cm.user_id = u.user_id
+        WHERE cm.institution_id = ? and cm.status ="active";
+    `;
+
+    const [committeeMembers] = await facultyDb.query(query, [instituteId]);
+
+        res.render('./principal/sessionActivate', { committeeMembers ,message:""});
+    } catch (error) {
+        console.error('Error fetching departments:', error);
+        res.status(500).send('Internal Server Error');
+    }
+})
 
 
+router.get("/grading",async (req,res)=>{
+    res.render("./principal/grade");
+})
 
 router.get('/logout', (req, res) => {
     res.clearCookie('token');

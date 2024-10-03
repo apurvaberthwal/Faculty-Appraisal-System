@@ -92,6 +92,11 @@
             text-align: center; /* Center the button */
             margin-top: 20px;
         }
+        input[type="number"]::-webkit-outer-spin-button,
+        input[type="number"]::-webkit-inner-spin-button {
+        -webkit-appearance: none;
+        margin: 0;
+}
 
     </style>
 </head>
@@ -159,21 +164,55 @@
     </div>
 </div>
     <script>
+        // function validateInput(input) {
+        //     var maxScore = parseInt(input.max);
+        //     var value = parseInt(input.value);
+
+        //     if (value > maxScore) {
+        //         alert(`The self-approved score cannot exceed the max score ${maxScore}`);
+        //         input.value = ''; // Reset the value
+        //     } else {
+        //         input.setCustomValidity('');
+        //         input.style.borderColor = ""; // Reset the border color
+        //     }
+
+        //     recalculateTotal();
+        // }
+
         function validateInput(input) {
-            var maxScore = parseInt(input.max);
-            var value = parseInt(input.value);
+    var maxScore = parseInt(input.max);
+    var value = parseInt(input.value);
+    var paramId = input.name.replace('self_approved_', ''); // Extract parameter id
 
-            if (value > maxScore) {
-                alert(`The self-approved score cannot exceed the max score ${maxScore}`);
-                input.value = ''; // Reset the value
-            } else {
-                input.setCustomValidity('');
-                input.style.borderColor = ""; // Reset the border color
-            }
+    if (value > maxScore) {
+        alert(`The self-approved score cannot exceed the max score ${maxScore}`);
+        input.value = ''; // Reset the value
+    } else {
+        input.setCustomValidity('');
+        input.style.borderColor = ""; // Reset the border color
+    } 
 
-            recalculateTotal();
+    // Disable supportive document and checkbox if value is 0
+    var docInput = document.getElementById('doc_' + paramId);
+    var toggleCheckbox = document.getElementById('toggle_' + paramId);
+    
+    if (value == 0) {
+        var confirmDisable = window.confirm("Are you sure you want to disable document upload for this parameter?");
+
+        if (confirmDisable) {
+            docInput.disabled = true;
+            toggleCheckbox.checked = true;
         }
+        else {
+            input.value = ''; // Reset the value
+        }
+    } else {
+        docInput.disabled = false;
+        toggleCheckbox.checked = false;
+    }
 
+    recalculateTotal();
+}
         function recalculateTotal() {
             var inputs = document.querySelectorAll('input[type="number"]');
             var total = 0;
@@ -189,6 +228,7 @@
 
             docInput.disabled = toggleCheckbox.checked;
         }
+        
 
         function validateForm() {
             var allValid = true;

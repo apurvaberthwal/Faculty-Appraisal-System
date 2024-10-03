@@ -1,23 +1,24 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Homepage</title>
+    <!-- Import Google Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Roboto+Slab:wght@700&display=swap" rel="stylesheet">    
     <style>
         body {
             background: linear-gradient(120deg, #3a7bd5 100%, #3a6073 100%);
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            font-family: 'Roboto Slab', serif;
             margin: 0;
             padding: 0;
         }
 
         .container {
-           margin-top: 80px;
-           margin-left: 50px; 
-           width: 85%;
-            
-            padding: 40px;
+            margin-top: 80px;
+            margin-left: 50px;
+            width: 90%;
+            padding: 50px;
             background-color: rgba(0, 0, 0, 0.7);
             color: white;
             border-radius: 12px;
@@ -32,51 +33,72 @@
             text-align: center;
         }
 
+        /* Rotating effect for Performance 360 */
         .left-side img {
             width: 100%;
-            max-width: 500px;
+            max-width: 600px;
             border-radius: 12px;
+            /* Apply rotation */
         }
 
+    
         .right-side {
             flex: 1;
             text-align: center;
         }
 
+        /* Unique font for Welcome and Performance 360 */
+        h1, .performance-title {
+            font-family: 'Montserrat', sans-serif;
+            color: #f2f2f2;
+        }
+
         h1 {
+            font-size: 48px;
+            margin-bottom: 40px;
+            font-family: 'Poppins', sans-serif;
+        }
+
+        .performance-title {
             font-size: 36px;
             margin-bottom: 20px;
-            color: #f2f2f2;
         }
 
         .login-group, .register-group {
-            margin-bottom: 20px;
+            margin-bottom: 40px;
         }
 
         .login-group h2, .register-group h2 {
-            font-size: 24px;
-            margin-bottom: 10px;
+            font-size: 28px;
+            margin-bottom: 20px;
             color: #f2f2f2;
+        }
+
+        .btn-group {
+            display: flex;
+            justify-content: center;
+            gap: 30px;
         }
 
         .btn-group button {
             background-color: #3498db;
             color: white;
             border: none;
-            padding: 12px 20px;
-            border-radius: 6px;
+            padding: 14px 25px;
+            border-radius: 8px;
             cursor: pointer;
-            font-size: 16px;
+            font-size: 18px;
             transition: background-color 0.3s ease;
             margin: 5px 0;
             width: 100%;
-            max-width: 250px;
+            max-width: 280px;
         }
 
         .btn-group button:hover {
             background-color: #2980b9;
         }
 
+        /* Responsive adjustments */
         @media (max-width: 768px) {
             .container {
                 flex-direction: column;
@@ -88,18 +110,64 @@
             }
 
             .btn-group {
+                flex-direction: column;
                 width: 100%;
+                gap: 10px;
             }
+            
         }
+        .highlight {
+            display: inline-block;
+            color: #3498db;
+            font-size: 42px;
+            font-family: 'Poppins', sans-serif;
+            position: relative;
+            transition: color 0.4s ease-in-out;
+        }
+
+        /* Smooth underline on hover */
+        .highlight::after {
+            content: '';
+            position: absolute;
+            width: 0;
+            height: 3px;
+            background-color: #e74c3c;
+            left: 0;
+            bottom: -5px;
+            transition: width 0.4s ease-in-out;
+        }
+
+        .highlight:hover::after {
+            width: 100%;
+        }
+
+        /* Color change on hover */
+        .highlight:hover {
+            color: #e74c3c;
+        }
+
+        p {
+            font-size: 18px;
+            margin-top: 20px;
+        }
+
+
+       
+       
     </style>
 </head>
 <body>
     <div class="container">
         <div class="left-side">
-            <img src="/images/logo.jpg" alt="Decorative Image">
+            <!-- Rotating Image -->
+            <img src="/images/logo.jpg" alt="Appraisal Logo">
+        
         </div>
         <div class="right-side">
-            <h1>Welcome to the Homepage</h1>
+            <h1>Welcome to <span class="highlight">Performance 360</span></h1>
+        <p>Explore dynamic performance management with a seamless experience.</p>
+    
+            
             <div class="login-group">
                 <h2>Login</h2>
                 <div class="btn-group">
@@ -107,6 +175,7 @@
                     <button onclick="window.location.href='/faculty/login'">Faculty Login</button>
                 </div>
             </div>
+
             <div class="register-group">
                 <h2>Register</h2>
                 <div class="btn-group">

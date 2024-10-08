@@ -100,7 +100,7 @@
     </script>
 </head>
 <body>
-
+    
 <div class="container">
     <h2>CRITERIA SELECTION FORM</h2>
 
@@ -114,6 +114,7 @@
 
     <!-- Form -->
     <form id="criteriaForm" action="/committee/addParams" method="post" onsubmit="return validateForm();">
+      
         <label for="criteria">Select Criteria:</label>
         <select id="criteriaSelect" name="criteria_name">
             <% data.forEach(course => { %>
@@ -138,9 +139,8 @@
         <input type="number" id="totalMarks" name="totalMarks">
     
         <button type="submit">Submit</button>
-    </form>
-    
+    </form>a
 </div>
 
 </body>
-</html>
+</html>  

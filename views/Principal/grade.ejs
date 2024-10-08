@@ -1,3 +1,4 @@
+<%- include("nav") %>
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -7,7 +8,7 @@
     <style>
         body {
             font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            background-color: #f0f8ff;
+            background: linear-gradient(120deg, #3a7bd5 0%, #3a6073 100%);
             margin: 0;
             padding: 0;
             color: #333;
@@ -16,7 +17,7 @@
             text-align: center;
             margin-top: 20px;
             font-size: 2.5em;
-            color: #1E90FF;
+            color: white;
             letter-spacing: 1px;
             text-transform: uppercase;
         }
@@ -60,18 +61,96 @@
             border-radius: 4px;
             font-size: 1em;
         }
-        .error {
-            color: red;
+        .error, .success {
             text-align: center;
             margin-top: 10px;
+        }
+        .error {
+            color: red;
+        }
+        .success {
+            color: green;
+        }
+        button {
+            display: block;
+            margin: 20px auto;
+            padding: 10px 20px;
+            background-color: #1E90FF;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            font-size: 1.1em;
+            cursor: pointer;
+        }
+        button:hover {
+            background-color: #005cbf;
+        }
+        /* Modal Styles */
+        .modal {
+            display: none;
+            position: fixed;
+            z-index: 9999;
+            left: 0;
+            top: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.6);
+            justify-content: center;
+            align-items: center;
+        }
+        .modal-content {
+            background-color: #fefefe;
+            padding: 20px;
+            border-radius: 8px;
+            width: 400px;
+            text-align: center;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.3);
+        }
+        .modal-header {
+            font-size: 1.5em;
+            margin-bottom: 20px;
+        }
+        /* Align buttons horizontally */
+        .modal-buttons {
+            display: flex;
+            justify-content: center;
+            gap: 20px; /* Add spacing between buttons */
+        }
+        .modal-buttons button {
+            padding: 10px 20px;
+            font-size: 1em;
+            border: none;
+            cursor: pointer;
+            border-radius: 4px;
+        }
+        #yesButton {
+            background-color: #2ecc71;
+            color: white;
+        }
+        #noButton {
+            background-color: #e74c3c;
+            color: white;
         }
     </style>
 </head>
 <body>
 
     <h1>Grading System</h1>
-
+    <p>Appraisal ID: <%= appraisal_id %></p>
+    <p>Total Marks: <%= total_marks %></p>
     <div class="error" id="error-message"></div>
+    <div class="success" id="success-message"></div>
+
+    <div id="myModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">Appraisal Cycle Created Successfully!</div>
+            <p>Do you wish to add committee members?</p>
+            <div class="modal-buttons">
+                <button id="yesButton" onclick="redirectTo('/principal/createCommittee')">Yes</button>
+                <button id="noButton" onclick="redirectTo('/principal/dashboard')">No</button>
+            </div>
+        </div>
+    </div>
 
     <table>
         <thead>
@@ -105,8 +184,11 @@
         </tbody>
     </table>
 
+    <button onclick="submitGrades()">Submit</button>
+
     <script>
         function validateGrades() {
+            const totalMarks = <%= total_marks %>;
             const minA = document.getElementById('min-a').value;
             const maxA = document.getElementById('max-a').value;
             const minB = document.getElementById('min-b').value;
@@ -115,38 +197,103 @@
             const maxC = document.getElementById('max-c').value;
             const minD = document.getElementById('min-d').value;
             const maxD = document.getElementById('max-d').value;
-
+    
             let errorMessage = "";
-
-            // Ensure Min of a grade is greater than Max of the lower grade
-            if (minA && maxB && parseInt(minA) <= parseInt(maxB)) {
-                errorMessage += "Min of Grade A must be greater than Max of Grade B.\n";
+    
+            // Validate max marks
+            if (parseInt(maxA) > totalMarks) {
+                errorMessage += "Max of Grade A must be less than total marks.<br>";
             }
-            if (minB && maxC && parseInt(minB) <= parseInt(maxC)) {
-                errorMessage += "Min of Grade B must be greater than Max of Grade C.\n";
+            if (parseInt(maxB) >= totalMarks) {
+                errorMessage += "Max of Grade B must be less than total marks.<br>";
             }
-            if (minC && maxD && parseInt(minC) <= parseInt(maxD)) {
-                errorMessage += "Min of Grade C must be greater than Max of Grade D.\n";
+            if (parseInt(maxC) >= totalMarks) {
+                errorMessage += "Max of Grade C must be less than total marks.<br>";
             }
-
-            // Ensure Min is greater than Max within the same grade
+            if (parseInt(maxD) >= totalMarks) {
+                errorMessage += "Max of Grade D must be less than total marks.<br>";
+            }
+    
+            // Validate min and max marks
             if (minA && maxA && parseInt(minA) >= parseInt(maxA)) {
-                errorMessage += "Min of Grade A must be less than Max of Grade A.\n";
+                errorMessage += "Min of Grade A must be less than Max of Grade A.<br>";
             }
             if (minB && maxB && parseInt(minB) >= parseInt(maxB)) {
-                errorMessage += "Min of Grade B must be less than Max of Grade B.\n";
+                errorMessage += "Min of Grade B must be less than Max of Grade B.<br>";
             }
             if (minC && maxC && parseInt(minC) >= parseInt(maxC)) {
-                errorMessage += "Min of Grade C must be less than Max of Grade C.\n";
+                errorMessage += "Min of Grade C must be less than Max of Grade C.<br>";
             }
             if (minD && maxD && parseInt(minD) >= parseInt(maxD)) {
-                errorMessage += "Min of Grade D must be less than Max of Grade D.\n";
+                errorMessage += "Min of Grade D must be less than Max of Grade D.<br>";
             }
+    
+            // Display error messages if any
+            if (errorMessage) {
+                document.getElementById("error-message").innerHTML = errorMessage;
+                document.getElementById("success-message").textContent = '';
+            } else {
+                document.getElementById("error-message").textContent = '';
+                document.getElementById("success-message").textContent = '';
+            }
+        }
+    
+        function submitGrades() {
+            const totalMarks = <%= total_marks %>;
+            const maxA = parseInt(document.getElementById('max-a').value);
+            const maxB = parseInt(document.getElementById('max-b').value);
+            const maxC = parseInt(document.getElementById('max-c').value);
+            const maxD = parseInt(document.getElementById('max-d').value);
 
-            // Display error message
-            document.getElementById("error-message").innerText = errorMessage;
+            // Validate max marks again before submission
+            if (maxA > totalMarks || maxB >= totalMarks || maxC >= totalMarks || maxD >= totalMarks) {
+                document.getElementById("error-message").innerHTML = "Max marks must be less than total marks.";
+                return;
+            }
+            const appraisalId = '<%= appraisal_id %>'; // Get the appraisal ID from the server-side variable
+            const grades = [
+                { title: 'A', min: document.getElementById('min-a').value, max: document.getElementById('max-a').value },
+                { title: 'B', min: document.getElementById('min-b').value, max: document.getElementById('max-b').value },
+                { title: 'C', min: document.getElementById('min-c').value, max: document.getElementById('max-c').value },
+                { title: 'D', min: document.getElementById('min-d').value, max: document.getElementById('max-d').value }
+            ];
+            // Here, you would typically send the grades to your server
+            // After successful submission, change appraisal status to active
+            fetch('/principal/appraisal/updateStatus', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({ appraisalId: appraisalId, grades: grades }) // Include the appraisal ID and the grades in the request body
+            })
+            .then(response => {
+                if (!response.ok) {
+                    throw new Error('Failed to update appraisal status');
+                }
+                return response.json();
+            })
+            .then(data => {
+                // Display modal if status update is successful
+                document.getElementById("myModal").style.display = "flex";
+                document.getElementById("success-message").textContent = 'Grades submitted successfully!';
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                document.getElementById("error-message").textContent = 'Failed to submit grades. Please try again.';
+            });
+        }
+    
+        function redirectTo(url) {
+            window.location.href = url;
+        }
+    
+        // Close the modal when clicking anywhere outside of it
+        window.onclick = function(event) {
+            const modal = document.getElementById("myModal");
+            if (event.target == modal) {
+                modal.style.display = "none";
+            }
         }
     </script>
-
 </body>
-</html>
+</html>    

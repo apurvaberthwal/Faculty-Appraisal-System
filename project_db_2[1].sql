@@ -106,6 +106,7 @@ BEGIN
 END//
 DELIMITER ;
 
+
 -- Table for criteria master
 CREATE TABLE criteria_master (
     id INT AUTO_INCREMENT PRIMARY KEY,
@@ -113,7 +114,9 @@ CREATE TABLE criteria_master (
     criteria_description VARCHAR(240),
     max_marks INT,
     timestamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    status ENUM('active', 'inactive') DEFAULT 'active'
+    status ENUM('active', 'inactive') DEFAULT 'active',
+    type ENUM('self', 'appraisal') DEFAULT 'self'
+
 );
 
 DELIMITER //
@@ -136,7 +139,7 @@ CREATE TABLE c_parameter_master (
     parameter_max_marks INT,
     criteria_id VARCHAR(50) ,
     `timestamp` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    status ENUM('active', 'inactive') DEFAULT 'active',
+    status ENUM('active', 'inactive') DEFAULT 'active', type ENUM('self', 'appraisal') DEFAULT 'self',
     FOREIGN KEY (criteria_id) REFERENCES criteria_master(criteria_id)
 );
 
@@ -151,6 +154,10 @@ BEGIN
     SET NEW.c_parameter_id = CONCAT('C_PARA', next_id);
 END//
 DELIMITER ;
+
+
+-- Table for  appraisal master
+
 
 CREATE TABLE apprisal_master 
 (
@@ -171,15 +178,51 @@ CREATE TABLE apprisal_master
 );
 
 DELIMITER //
-CREATE TRIGGER before_apprisal_master 
-BEFORE INSERT ON apprisal_master 
+CREATE TRIGGER before_insert_appraisal_master 
+BEFORE INSERT ON appraisal_master 
 FOR EACH ROW
 BEGIN
     DECLARE next_id INT;
-    SET next_id = (SELECT AUTO_INCREMENT FROM information_schema.TABLES WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'apprisal_master ');
-    SET NEW.review_id = CONCAT('APPR', next_id);
+    SET next_id = (SELECT AUTO_INCREMENT FROM information_schema.TABLES 
+                   WHERE TABLE_SCHEMA = DATABASE() 
+                   AND TABLE_NAME = 'appraisal_master');
+    SET NEW.appraisal_id = CONCAT('APPR', next_id);
 END//
 DELIMITER ;
+
+
+
+-- Table for  appraisalcriteriraparamaster score master
+
+
+CREATE TABLE apprisal_criteria_parameter_master 
+(
+  id INT AUTO_INCREMENT PRIMARY KEY,
+  ACP_id VARCHAR(10) unique,
+  criteria_id VARCHAR(50),
+  FOREIGN KEY (criteria_id) REFERENCES criteria_master(criteria_id),
+  c_parameter_id VARCHAR(50),
+  appraisal_id varchar(10),
+  total_marks int ,
+  FOREIGN KEY (appraisal_id) REFERENCES appraisal_master(appraisal_id),
+  FOREIGN KEY (c_parameter_id) REFERENCES c_parameter_master(c_parameter_id),
+  timestamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  status ENUM('active', 'inactive') DEFAULT 'active'
+);
+
+
+
+DELIMITER //
+CREATE TRIGGER apprisal_criteria_parameter_master 
+BEFORE INSERT ON apprisal_criteria_parameter_master 
+FOR EACH ROW
+BEGIN
+    DECLARE next_id INT;
+    SET next_id = (SELECT AUTO_INCREMENT FROM information_schema.TABLES WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'apprisal_criteria_parameter_master ');
+    SET NEW.ACP_id = CONCAT('ACP', next_id);
+END//
+DELIMITER ;
+
 
 
 
@@ -187,13 +230,18 @@ DELIMITER ;
 CREATE TABLE self_appraisal_score_master (
     id INT AUTO_INCREMENT PRIMARY KEY,
     record_id VARCHAR(50) UNIQUE,
-    user_id VARCHAR(50), FOREIGN KEY (user_id) REFERENCES user_master(user_id),
-    marks_by_emp INT,   
+    user_id VARCHAR(50), 
+    marks_by_emp INT,
     c_parameter_id VARCHAR(50),
-    apprisal_id varchar(10),
+    appraisal_id VARCHAR(50),
+    
+    -- Adding timestamps and status
     timestamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     status ENUM('active', 'inactive') DEFAULT 'active',
-    FOREIGN KEY (apprisal_id) REFERENCES apprisal_master(apprisal_id)
+    
+    -- Foreign Key constraints
+    FOREIGN KEY (user_id) REFERENCES user_master(user_id),
+    FOREIGN KEY (appraisal_id) REFERENCES appraisal_master(appraisal_id),
     FOREIGN KEY (c_parameter_id) REFERENCES c_parameter_master(c_parameter_id)
 );
 
@@ -218,6 +266,7 @@ CREATE TABLE committee_master (
     user_id_committee VARCHAR(50),
     comm_score INT,
     c_parameter_id VARCHAR(50), FOREIGN KEY (c_parameter_id) REFERENCES c_parameter_master(c_parameter_id),
+    appraisal_id varchar(50) , FOREIGN KEY (appraisal_id) REFERENCES appraisal_master(appraisal_id),
     timestamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     status ENUM('active', 'inactive') DEFAULT 'active',
     FOREIGN KEY (user_id_employee) REFERENCES user_master(user_id),
@@ -249,7 +298,7 @@ CREATE TABLE document_master (
     timestamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     status ENUM('active', 'inactive') DEFAULT 'active'
 );
-
+  
 DELIMITER //
 CREATE TRIGGER before_document_master
 BEFORE INSERT ON document_master
@@ -284,24 +333,128 @@ DELIMITER ;
 
 
 
-
-
-
-
 CREATE TABLE grade_master 
 (
   id INT AUTO_INCREMENT PRIMARY KEY,
-  grade_id VARCHAR2(10) unique,
-  grade_name varchar(250),
+  grade_id VARCHAR(10) UNIQUE,
+  appraisal_id VARCHAR(50),
+  grade_title VARCHAR(250),
   min_marks VARCHAR(50),
-  max_marks varchar(50),
-    timestamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    status ENUM('active', 'inactive') DEFAULT 'active',
+  max_marks VARCHAR(50),
+  timestamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  status ENUM('active', 'inactive') DEFAULT 'active',
+  FOREIGN KEY (appraisal_id) REFERENCES appraisal_master(appraisal_id) 
+);
+DELIMITER //
+
+CREATE TRIGGER before_grade_master_insert
+BEFORE INSERT ON grade_master 
+FOR EACH ROW
+BEGIN
+    DECLARE next_id INT;
     
+    -- Get the next auto-increment value for the appraisal_master table
+    SET next_id = (SELECT AUTO_INCREMENT 
+                   FROM information_schema.TABLES 
+                   WHERE TABLE_SCHEMA = DATABASE() 
+                   AND TABLE_NAME = 'grade_master ');
+    
+    -- Set the new appraisal_id to be 'APP' followed by the next_id
+    SET NEW.grade_id = CONCAT('grade', next_id);
+END//
+
+DELIMITER ;
+
+
+create table appraisal_master(
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    appraisal_id VARCHAR(50) UNIQUE,
+    appraisal_cycle_name varchar(250),
+    user_id VARCHAR(250),FOREIGN KEY (user_id) REFERENCES user_master(user_id),
+    start_date DATE,
+    end_date DATE,
+    timestamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    status ENUM('active', 'inactive') DEFAULT 'active'
 );
 
 
 
+
+
+
+
+
+
+
+
+
+DELIMITER //
+
+CREATE TRIGGER before_appraisal_master_insert
+BEFORE INSERT ON appraisal_master
+FOR EACH ROW
+BEGIN
+    DECLARE next_id INT;
+    
+    -- Get the next auto-increment value for the appraisal_master table
+    SET next_id = (SELECT AUTO_INCREMENT 
+                   FROM information_schema.TABLES 
+                   WHERE TABLE_SCHEMA = DATABASE() 
+                   AND TABLE_NAME = 'appraisal_master');
+    
+    -- Set the new appraisal_id to be 'APP' followed by the next_id
+    SET NEW.appraisal_id = CONCAT('APP', next_id);
+END//
+
+DELIMITER ;
+
+
+
+INSERT INTO appraisal_master (appraisal_cycle_name, user_id, status)
+VALUES 
+('2024 Mid-Year Review', 'USR17', 'active'),
+('2024 End-of-Year Review', 'USR17', 'active');
+
+
+
+create table appraisal_departments(
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    appraisal_dept_id VARCHAR(50) UNIQUE,
+    appraisal_id VARCHAR(50),
+    FOREIGN KEY (appraisal_id) REFERENCES appraisal_master(appraisal_id),
+    department_id VARCHAR(50),
+    FOREIGN KEY (department_id) REFERENCES department_master(dept_id),
+    institution_id VARCHAR(50),
+    FOREIGN KEY (institution_id) REFERENCES institution_master(institution_id),
+    timestamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    status ENUM('active', 'inactive') DEFAULT 'active'
+    
+);
+
+DELIMITER //
+CREATE TRIGGER before_appraisal_departments_insert
+BEFORE INSERT ON appraisal_departments
+FOR EACH ROW
+BEGIN
+    DECLARE next_id INT;
+
+    -- Get the next auto-increment value for the appraisal_departments table
+    SELECT IFNULL(MAX(CAST(SUBSTRING(appraisal_dept_id, 3) AS UNSIGNED)), 0) + 1 INTO next_id
+    FROM appraisal_departments;
+
+    -- Set the new appraisal_dept_id to be 'AD' followed by the next_id
+    SET NEW.appraisal_dept_id = CONCAT('AD', next_id);
+END//
+DELIMITER ;
+
+    
+
+
+INSERT INTO appraisal_departments (appraisal_id, department_id, institution_id, status)
+VALUES 
+('APP3', 'DEPT10', 'INS8', 'active'),
+
+('APP5', 'DEPT10', 'INS8', 'active');
 
 
 
@@ -469,6 +622,8 @@ CREATE TABLE committee_member_master (
     institution_id VARCHAR(50),
     start_date DATE,
     end_date DATE,
+        appraisal_id varchar(50) , FOREIGN KEY (appraisal_id) REFERENCES appraisal_master(appraisal_id),
+
     status ENUM('active', 'inactive') DEFAULT 'active',
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
@@ -509,4 +664,41 @@ insert into department_master (department_name,institution_id) values ("Biology"
 
 
 
+-- for committee
+-- Step 1: Add the column
+ALTER TABLE committee_master 
+ADD appraisal_id VARCHAR(50);
+-- Step 1: Add the column
+ALTER TABLE committee_master 
+ADD appraisal_id VARCHAR(50);
 
+-- Step 2: Add the foreign key constraint
+ALTER TABLE committee_master 
+ADD CONSTRAINT fk_appraisal_id 
+FOREIGN KEY (appraisal_id) REFERENCES appraisal_master(appraisal_id);
+
+-- Step 2: Add the foreign key constraint
+ALTER TABLE committee_master 
+ADD CONSTRAINT fk_appraisal_id 
+FOREIGN KEY (appraisal_id) REFERENCES appraisal_master(appraisal_id);
+
+-- for self appraisal master 
+
+ALTER TABLE self_appraisal_score_master 
+ADD appraisal_id VARCHAR(50);
+
+ALTER TABLE self_appraisal_score_master 
+ADD CONSTRAINT fk_appraisal_id 
+FOREIGN KEY (appraisal_id) REFERENCES appraisal_master(appraisal_id);
+
+-- for documnet master
+
+ALTER TABLE document_master
+ADD appraisal_id VARCHAR(50);
+
+ALTER TABLE document_master
+ADD CONSTRAINT fk_appraisal_id 
+FOREIGN KEY (appraisal_id) REFERENCES appraisal_master(appraisal_id);
+
+
+--

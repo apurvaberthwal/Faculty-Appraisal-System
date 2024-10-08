@@ -1,0 +1,210 @@
+<%- include("nav") %>
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Parameter Table</title>
+    <style>
+        body {
+            background: linear-gradient(120deg, #3a7bd5 0%, #3a6073 100%);
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            margin: 0;
+            padding: 0;
+            color: #f0f0f0;
+        }
+        .container {
+            width: 90%;
+            margin: 20px auto;
+            padding: 30px;
+            background-color: rgba(255, 255, 255, 0.05);
+            border-radius: 12px;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.2);
+        }
+        h1 {
+            font-size: 28px;
+            text-align: center;
+            margin-bottom: 20px;
+            color: #f2f2f2;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-bottom: 20px;
+            background-color: rgba(255, 255, 255, 0.05);
+        }
+        th, td {
+            padding: 15px;
+            text-align: left;
+            border: 1px solid #ddd;
+            color: #f0f0f0;
+            font-size: 16px;
+        }
+        th {
+            background-color: #3498db;
+            color: #fff;
+        }
+        tbody tr:nth-child(even) {
+            background-color: rgba(255, 255, 255, 0.1);
+        }
+        tbody tr:hover {
+            background-color: rgba(255, 255, 255, 0.2);
+        }
+        .navigation {
+            display: flex;
+            justify-content: center;
+            margin-top: 20px;
+        }
+        .button {
+            background-color: #00ca11;
+            color: white;
+            border: none;
+            padding: 12px 20px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 16px;
+            margin: 0 10px;
+            transition: background-color 0.3s ease;
+        }
+        .button:hover {
+            background-color: #5eff50;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Parameter Selection</h1>
+        
+        <form id="parameterForm">
+            <% criteria.forEach((criterion, index) => { %>
+                <div class="step" data-criteria-id="<%= criterion.criteria_id %>" style="display: none;">
+                    <h2><%= criterion.criteria_description %></h2>
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Parameter Description</th>
+                                <th>Total Marks</th>
+                                <th>Select</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <% criterion.parameters.forEach(parameter => { %>
+                                <tr>
+                                    <td><%= parameter.parameter_description %></td>
+                                    <td><%= parameter.parameter_max_marks %></td>
+                                    <td>
+                                        <input type="checkbox" value="<%= parameter.c_parameter_id %>" data-marks="<%= parameter.parameter_max_marks %>">
+                                    </td>
+                                </tr>
+                            <% }) %>
+                        </tbody>
+                    </table>
+                </div>
+            <% }) %>
+
+            <div class="navigation">
+                <button type="button" id="prevBtn" class="button" onclick="nextStep(-1)">Previous</button>
+                <button type="button" id="nextBtn" class="button" onclick="nextStep(1)">Next</button>
+            </div>
+            <button type="submit" id="submitBtn" style="display: none;" class="button">Submit</button>
+        </form>
+    </div>
+
+    <script>
+        const steps = document.querySelectorAll('.step');
+        let currentStep = 0;
+        const appraisal_id ="<%= appraisalId %>";
+        function showStep(step) {
+            steps.forEach((s, index) => {
+                s.style.display = index === step ? 'block' : 'none';
+            });
+
+            // Show/hide navigation buttons
+            document.getElementById('prevBtn').style.display = step === 0 ? 'none' : 'inline';
+            document.getElementById('nextBtn').style.display = step === steps.length - 1 ? 'none' : 'inline';
+            document.getElementById('submitBtn').style.display = step === steps.length - 1 ? 'inline' : 'none';
+        }
+
+        function nextStep(n) {
+            const selectedParameters = getSelectedParameters();
+            if (n === 1 && !selectedParameters) return; // If moving forward, ensure parameters are selected
+
+            currentStep += n;
+            if (currentStep < 0 || currentStep >= steps.length) return; // Prevent out of bounds
+            showStep(currentStep);
+        }
+
+        function getSelectedParameters() {
+    const currentStepElement = steps[currentStep];
+    if (!currentStepElement) {
+        console.error('Current step element is undefined');
+        return null;
+    }
+
+    const checkboxes = currentStepElement.querySelectorAll('input[type="checkbox"]:checked');
+    if (checkboxes.length === 0) {
+        alert('Please select at least one parameter.');
+        return null; // Return null if no checkbox is selected
+    }
+    return Array.from(checkboxes).map(checkbox => ({
+        c_parameter_id: checkbox.value,
+        criteria_id: currentStepElement.getAttribute('data-criteria-id'), // Corrected here
+        total_marks: checkbox.getAttribute('data-marks'), // Corrected here
+        appraisal_id: appraisal_id
+    }));
+}
+
+document.getElementById('parameterForm').addEventListener('submit', function(e) {
+    e.preventDefault(); // Prevent default form submission
+    const parameters = [];
+
+    // Collect selected parameters from all steps
+    steps.forEach(step => {
+        const checkboxes = step.querySelectorAll('input[type="checkbox"]:checked');
+        checkboxes.forEach(checkbox => {
+            parameters.push({
+                c_parameter_id: checkbox.value,
+                criteria_id: step.getAttribute('data-criteria-id'),
+                total_marks: checkbox.getAttribute('data-marks'),
+                appraisal_id: appraisal_id
+            });
+        });
+    });
+
+    if (parameters.length === 0) {
+        alert('Please select at least one parameter before submitting.');
+        return;
+    }
+
+    // Make an AJAX request to submit parameters
+    fetch('/principal/submitParameters', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ parameters })
+    })
+    .then(response => {
+        if (!response.ok) {
+            throw new Error('Network response was not ok ' + response.statusText);
+        }
+        return response.json();
+    })
+    .then(data => {
+        alert(data.message); // Show success message
+        // Redirect to the specified URL
+        window.location.href = data.redirectUrl;
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        alert('An error occurred while submitting parameters.');
+    });
+});
+
+
+        // Show the first step initially
+        showStep(currentStep);
+    </script>
+</body>
+</html>

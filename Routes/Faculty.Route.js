@@ -469,7 +469,24 @@ router.get('/criteria-status', async (req, res) => {
         res.status(500).send('Server error');
     }
 });
-
+router.get("/appraisalnum", async (req, res) => {
+    console.log(req.user.user_id)
+    try {
+        const [institute_id] = await facultyDb.query('select institution_id from user_master where user_type_id = ?', [req.user.user_id]);
+        console.log(institute_id);
+        const institute = institute_id[0].institution_id;
+        const [results] = await facultyDb.query(`
+            SELECT am.* 
+            FROM appraisal_master am
+            JOIN appraisal_departments ad ON am.appraisal_id = ad.appraisal_id
+            WHERE ad.institution_id = ? AND am.status = 'active'
+        `, [institute]);
+        res.render('./Faculty/dashboard3', { data: results });
+    } catch (error) {
+        console.error('Error fetching appraisal number:', error);
+        res.status(500).send('Internal Server Error');
+    }
+});
 
 router.post("/apply", upload.any(), async (req, res) => {
     if (!req.user) {

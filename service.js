@@ -1,9 +1,9 @@
 import { config } from 'dotenv';
+import ejs from 'ejs'; // Templating engine
 import jwt from 'jsonwebtoken';
 import { createTransport } from 'nodemailer'; // For sending emails
-
-import ejs from 'ejs'; // Templating engine
 import puppeteer from 'puppeteer'; // For browser automation
+import facultyDb from './faculty.db.js';
 
 config();
 export const authenticateJWT = (req, res, next) => {
@@ -228,4 +228,62 @@ export async function sendCommitteeEmails(members) {
   } catch (error) {
       console.error('Error sending emails:', error);
   }
+}
+export async function getParametersByCriteriaId(criteriaId) {
+  const query = 'SELECT parameter_description, parameter_max_marks FROM parameters WHERE criteria_id = ?';
+  const [results] = await facultyDb.query(query, [criteriaId]);
+  return results;
+}
+export async function getCriteriaWithParameters(selectedCriteriaIds) {
+  const query = `
+      SELECT c.criteria_id, c.criteria_description, p.c_parameter_id, p.parameter_description, p.parameter_max_marks
+      FROM criteria_master c
+      LEFT JOIN c_parameter_master p ON c.criteria_id = p.criteria_id
+      WHERE c.criteria_id IN (?)
+  `;
+  
+  const results = await facultyDb.query(query, [selectedCriteriaIds]);
+  
+  // Access only the first part of the results, which contains the data
+  const dataRows = results[0]; // Assuming the first element is the actual data
+  console.log("Raw query results:", dataRows); // Log the raw results
+
+  // Check if dataRows is an array and contains data
+  if (!Array.isArray(dataRows) || dataRows.length === 0) {
+    console.error("No results found for the query");
+    return [];
+  }
+
+  const criteria = dataRows.reduce((acc, row) => {
+      const criterionId = row.criteria_id; // Get the criteria_id from the row
+      
+      // Check if the criterionId is valid
+      if (!criterionId) {
+          console.warn("Encountered row with undefined criteria_id", row);
+          return acc; // Skip this iteration
+      }
+      
+      // Initialize the criterion if it doesn't exist
+      if (!acc[criterionId]) {
+          acc[criterionId] = {
+              criteria_id: criterionId,
+              criteria_description: row.criteria_description,
+              parameters: []
+          };
+      }
+
+      // Only add parameters if c_parameter_id exists
+      if (row.c_parameter_id) {
+          acc[criterionId].parameters.push({
+              c_parameter_id: row.c_parameter_id,
+              parameter_description: row.parameter_description,
+              parameter_max_marks: row.parameter_max_marks
+          });
+      }
+
+      return acc;
+  }, {});
+
+  console.log("Criteria object before return:", criteria); // Log the processed criteria
+  return Object.values(criteria);
 }

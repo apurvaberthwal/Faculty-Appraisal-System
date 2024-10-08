@@ -6,6 +6,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Create Appraisal Cycle</title>
+
     <style>
     /* Your CSS styling */
     body {
@@ -141,7 +142,7 @@
             const endDate = document.getElementById('end-date').value;
 
             try {
-                const response = await fetch('/appraisal/create', {
+                const response = await fetch('/principal/appraisal/create', {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json',
@@ -158,6 +159,7 @@
                 if (data.success) {
                     alert('Appraisal cycle created successfully!');
                     document.getElementById('appraisal-form').reset();
+                    window.location.href = `/principal/criteriaSelection/${data.appraisalId}`;
                 } else {
                     alert('Failed to create appraisal cycle.');
                 }

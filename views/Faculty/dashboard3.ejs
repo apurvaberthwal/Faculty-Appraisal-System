@@ -1,0 +1,117 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Add Committee Members</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(120deg, #3a7bd5 0%, #3a6073 100%);
+            margin: 0;
+            padding: 0;
+            color: #333;
+        }
+        h1 {
+            text-align: center;
+            margin-top: 20px;
+            font-size: 2.5em;
+            color: white;
+            letter-spacing: 1px;
+            text-transform: uppercase;
+        }
+        form {
+            width: 50%;
+            margin: 30px auto;
+            background-color: #fff;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+        }
+        label {
+            font-size: 1.2em;
+            display: block;
+            margin-bottom: 10px;
+        }
+        input[type="text"], input[type="email"] {
+            width: 100%;
+            padding: 10px;
+            margin-bottom: 20px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            font-size: 1.1em;
+        }
+        button {
+            display: block;
+            width: 100%;
+            padding: 10px;
+            background-color: #1E90FF;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            font-size: 1.1em;
+            cursor: pointer;
+        }
+        button:hover {
+            background-color: #005cbf;
+        }
+        .success, .error {
+            text-align: center;
+            margin-top: 20px;
+        }
+        .success {
+            color: green;
+        }
+        .error {
+            color: red;
+        }
+    </style>
+</head>
+<body>
+
+    <h1>Add Committee Members</h1>
+
+    <form id="committeeForm" onsubmit="return handleFormSubmit(event)">
+        <label for="name">Member Name</label>
+        <input type="text" id="name" name="name" placeholder="Enter member name" required>
+
+        <label for="email">Member Email</label>
+        <input type="email" id="email" name="email" placeholder="Enter member email" required>
+
+        <label for="role">Member Role</label>
+        <input type="text" id="role" name="role" placeholder="Enter member role (e.g. Chair, Secretary)" required>
+
+        <button type="submit">Add Member</button>
+
+        <div class="success" id="success-message"></div>
+        <div class="error" id="error-message"></div>
+    </form>
+
+    <script>
+        function handleFormSubmit(event) {
+            event.preventDefault(); // Prevent form submission
+
+            const name = document.getElementById('name').value;
+            const email = document.getElementById('email').value;
+            const role = document.getElementById('role').value;
+
+            if (name && email && role) {
+                // Clear any previous error
+                document.getElementById('error-message').innerText = '';
+
+                // Simulate form success message
+                document.getElementById('success-message').innerText = 'Committee Member Added Successfully!';
+
+                // Redirect after 2 seconds to a new form or page
+                setTimeout(function() {
+                    window.location.href = "thankyou.html"; // Change this to the actual redirect page URL
+                }, 2000);
+            } else {
+                document.getElementById('success-message').innerText = '';
+                document.getElementById('error-message').innerText = 'Please fill all fields correctly.';
+            }
+        }
+    </script>
+
+</body>
+</html>

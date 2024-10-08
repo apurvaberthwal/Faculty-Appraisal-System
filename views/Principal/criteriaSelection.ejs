@@ -1,0 +1,323 @@
+<%- include("nav") %>
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Criteria Checklist</title>
+    <style>
+        body {
+            background: linear-gradient(120deg, #3a7bd5 0%, #3a6073 100%);
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            margin: 0;
+            padding: 0;
+            color: #f0f0f0;
+        }
+
+        .container {
+            width: 90%;
+            margin: 20px auto;
+            padding: 30px;
+            background-color: rgba(255, 255, 255, 0.05);
+            border-radius: 12px;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.2);
+        }
+
+        h2 {
+            font-size: 28px;
+            text-align: center;
+            margin-bottom: 20px;
+            color: #f2f2f2;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-bottom: 20px;
+            background-color: rgba(255, 255, 255, 0.05);
+        }
+
+        th, td {
+            padding: 15px;
+            text-align: left;
+            border: 1px solid #ddd;
+            color: #f0f0f0;
+            font-size: 16px;
+        }
+
+        th {
+            background-color: #3498db;
+            color: #fff;
+        }
+
+        tbody tr:nth-child(even) {
+            background-color: rgba(255, 255, 255, 0.1);
+        }
+
+        tbody tr:hover {
+            background-color: rgba(255, 255, 255, 0.2);
+        }
+
+        .button-container {
+            display: flex;
+            justify-content: center;
+            margin-top: 20px;
+            position: relative;
+        }
+
+        .add-button {
+            background-color: #2ecc71;
+            color: white;
+            padding: 10px;
+            border: none;
+            border-radius: 50%;
+            cursor: pointer;
+            font-size: 20px;
+            width: 40px;
+            height: 40px;
+            line-height: 0;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            position: absolute;
+            bottom: 0;
+            right: 0;
+        }
+
+        .add-button:hover {
+            background-color: #27ae60;
+        }
+
+        button {
+            background-color: #00ca11;
+            color: white;
+            border: none;
+            padding: 12px 20px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 16px;
+            transition: background-color 0.3s ease;
+        }
+
+        button:hover {
+            background-color: #5eff50;
+        }
+
+        /* Modal Styling */
+        .modal {
+            display: none; 
+            position: fixed;
+            z-index: 1;
+            padding-top: 100px;
+            left: 0;
+            top: 0;
+            width: 100%;
+            height: 100%;
+            overflow: auto;
+            background-color: rgba(0, 0, 0, 0.7);
+        }
+
+        .modal-content {
+            background-color: #2c3e50;
+            margin: auto;
+            padding: 20px;
+            border-radius: 12px;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.2);
+            width: 50%;
+            color: #f0f0f0;
+        }
+
+        .close {
+            color: #aaa;
+            float: right;
+            font-size: 28px;
+            font-weight: bold;
+            transition: color 0.3s ease;
+        }
+
+        .close:hover,
+        .close:focus {
+            color: #fff;
+            text-decoration: none;
+            cursor: pointer;
+        }
+
+        .modal h2 {
+            color: #f2f2f2;
+            font-size: 24px;
+            margin-bottom: 15px;
+            text-align: center;
+        }
+
+        .modal label {
+            display: block;
+            margin: 15px 0 5px;
+            font-size: 16px;
+            color: #f0f0f0;
+        }
+
+        .modal input[type="text"], 
+        .modal input[type="number"] {
+            width: 100%;
+            padding: 12px;
+            margin: 8px 0;
+            background-color: rgba(255, 255, 255, 0.1);
+            border: 1px solid #ccc;
+            border-radius: 8px;
+            color: #f0f0f0;
+        }
+
+        .modal input[type="text"]:focus, 
+        .modal input[type="number"]:focus {
+            border-color: #3498db;
+            outline: none;
+        }
+
+        .modal button {
+            background-color: #2ecc71;
+            color: white;
+            padding: 12px 20px;
+            margin-top: 20px;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 16px;
+            width: 100%;
+            transition: background-color 0.3s ease;
+        }
+
+        .modal button:hover {
+            background-color: #27ae60;
+        }
+
+        /* Notification Styling */
+        .notification {
+            display: none;
+            background-color: rgba(0, 0, 0, 0.7);
+            color: #fff;
+            padding: 15px;
+            margin: 20px 0;
+            border-radius: 8px;
+            text-align: center;
+        }
+
+    </style>
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+</head>
+<body>
+    <h2>Criteria Selection</h2>
+    <div class="container">
+        <div class="notification" id="notification"></div>
+        <form id="criteriaForm" method="get" action="/Principal/parameterTable">     
+                   <input type="hidden" name="appraisal_id" value="<%= appraisalId %>">
+            
+            <table id="criteriaTable">
+                <thead>
+                    <tr>
+                        <th>Criteria ID</th>
+                        <th>Criteria Description</th>
+                        <th>Select</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <% criteria.forEach(function(criterion) { %>
+                        <tr>
+                            <td><%= criterion.criteria_id %></td>
+                            <td><%= criterion.criteria_description %></td>
+                            <td>
+                                <input type="checkbox" name="criteria[]" value="<%= criterion.criteria_id %>">
+
+                            </td>
+                        </tr>
+                    <% }); %>
+                </tbody>
+            </table>
+            
+            <div class="button-container">
+                <button type="submit">Submit</button>
+                <button id="addCriteriaBtn" type="button" class="add-button">+</button>
+            </div>
+        </form>
+        
+        <!-- Modal Structure -->
+        <div id="criteriaModal" class="modal">
+            <div class="modal-content">
+                <span class="close">&times;</span>
+                <h2>Add New Criteria</h2>
+                <label for="criteriaDescription">Criteria Description</label>
+                <input type="text" id="criteriaDescription" placeholder="Enter Criteria Description">
+                <button type="button" onclick="submitCriteria()">Add Criteria</button>
+            </div>
+        </div>
+
+        <script>
+            // Modal Functionality
+            const modal = document.getElementById('criteriaModal');
+            const btn = document.getElementById('addCriteriaBtn');
+            const span = document.getElementsByClassName('close')[0];
+            const notification = document.getElementById('notification');
+
+            // Open the modal when button is clicked
+            btn.onclick = function() {
+                modal.style.display = 'block';
+            }
+
+            // Close the modal when 'x' is clicked
+            span.onclick = function() {
+                modal.style.display = 'none';
+            }
+
+            // Close the modal when clicking outside of it
+            window.onclick = function(event) {
+                if (event.target == modal) {
+                    modal.style.display = 'none';
+                }
+            }
+
+            function submitCriteria() {
+                const description = $('#criteriaDescription').val();
+
+                // AJAX request to add new criteria
+                $.ajax({
+                    type: "POST",
+                    url: "/Principal/addCriteria",
+                    data: {
+                        criteria_description: description,
+                    },
+                    success: function(response) {
+                        showNotification(response.message, true);
+
+                        // Dynamically add the new criteria to the table
+                        const newRow = `
+                            <tr>
+                                <td>${response.criteriaId}</td>
+                                <td>${description}</td>
+                                <td><input type="checkbox" name="criteria[]" value="${response.criteriaId}"></td>
+                            </tr>
+                        `;
+                        $('#criteriaTable tbody').append(newRow);
+                        $('#criteriaDescription').val('');
+                    },
+                    error: function(xhr) {
+                        showNotification(xhr.responseJSON.message, false);
+                    }
+                });
+            }
+
+            function showNotification(message, isSuccess) {
+                notification.innerText = message;
+                notification.style.backgroundColor = isSuccess ? 'rgba(46, 204, 113, 0.9)' : 'rgba(231, 76, 60, 0.9)';
+                notification.style.display = 'block';
+
+                setTimeout(() => {
+                    notification.style.display = 'none';
+                }, 5000); // Set timeout to 5000ms (5 seconds)
+            }
+
+           
+            
+
+        </script>
+    </div>
+</body>
+</html>

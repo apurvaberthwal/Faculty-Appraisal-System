@@ -4,7 +4,7 @@ import express from 'express';
 import jwt from "jsonwebtoken";
 import Razorpay from 'razorpay';
 import facultyDb from '../faculty.db.js';
-import { authorizeRole, jwtMiddleware, sendApprovalEmail, sendCommitteeEmails, transporter } from '../service.js';
+import { authorizeRole, getCriteriaWithParameters, getParametersByCriteriaId, jwtMiddleware, sendApprovalEmail, sendCommitteeEmails, transporter } from '../service.js';
 const router = express.Router();
 router.use(jwtMiddleware);
 
@@ -855,28 +855,432 @@ router.get("/createAppraisal", async (req, res) => {
 })
 
 router.get("/sessionActivate", async (req, res) => {
+    const institute_id = req.user.institution_id;
+    try {
+        // Query to get all appraisal cycles for a specific institution
+        const [appraisals] = await facultyDb.query(`
+    SELECT DISTINCT 
+        am.appraisal_id, 
+        am.appraisal_cycle_name, 
+        am.start_date, 
+        am.end_date ,am.status
+    FROM appraisal_master am
+    JOIN appraisal_departments ad ON am.appraisal_id = ad.appraisal_id
+    WHERE ad.institution_id = ?
+`, [institute_id]);
+
+    
+    
+        // Check if no appraisal cycles are found for the given institution
+        if (appraisals.length === 0) {
+          return res.status(404).send('No appraisal cycles found for this institution.');
+        }
+    
+        // Render the appraisal table page and pass the appraisals data
+        res.render('./principal/ShowAppraisalCycle', { appraisals });
+      } catch (error) {
+        console.error('Error fetching appraisal data:', error);
+        res.status(500).send('Internal Server Error');
+      }
+})
+
+router.post("/appraisal/updateStatus", async (req, res) => {
+    const { appraisalId, grades } = req.body;
+    try {
+        const connection = await facultyDb.getConnection();
+
+        await connection.beginTransaction();
+
+        try {
+            await connection.query('UPDATE appraisal_master SET status = ? WHERE appraisal_id = ?', ['active', appraisalId]);
+
+            for (const grade of grades) {
+                await connection.query('INSERT INTO grade_master (grade_id, appraisal_id, grade_title, min_marks, max_marks) VALUES (?, ?, ?, ?, ?)', [grade.title, appraisalId, grade.title, grade.min, grade.max]);
+            }
+
+            await connection.commit();
+            res.json({ message: 'Appraisal status updated and grades inserted successfully' });
+        } catch (error) {
+            await connection.rollback();
+            console.error('Error:', error);
+            res.status(500).send('Internal Server Error');
+        } finally {
+            connection.release();
+        }
+    } catch (error) {
+        console.error('Error:', error);
+        res.status(500).send('Internal Server Error');
+    }
+});
+router.get("/grade", async (req, res) => {
+    try {
+        // Get appraisal_id and total_marks from the request query parameters
+        const { appraisal_id, total_marks } = req.query;
+
+        // Pass appraisal_id and total_marks to the grade view
+        res.render("./principal/grade", { appraisal_id, total_marks });
+    } catch (error) {
+        console.error(error);
+        res.status(500).send('Server Error');
+    }
+});
+router.get("/criteriaSelection/:appraisalId", async (req, res) => {
     try {
         const instituteId = req.user.institution_id;
-        const query = `
-        SELECT cm.user_id, u.first_name, u.last_name, u.email_id, cm.start_date, cm.end_date ,cm.status
-        FROM committee_member_master cm
-        JOIN user_master u ON cm.user_id = u.user_id
-        WHERE cm.institution_id = ? and cm.status ="active";
-    `;
+        const appraisalId = req.params.appraisalId;  // Access the appraisalId parameter
 
-    const [committeeMembers] = await facultyDb.query(query, [instituteId]);
+        const [criteria] = await facultyDb.query(
+            'SELECT * FROM criteria_master where type ="self"; '
+        );
 
-        res.render('./principal/sessionActivate', { committeeMembers ,message:""});
+        res.render('./principal/criteriaSelection', { criteria, appraisalId });  // Pass appraisalId to the view
+        
     } catch (error) {
         console.error('Error fetching departments:', error);
         res.status(500).send('Internal Server Error');
     }
-})
+});
 
 
-router.get("/grading",async (req,res)=>{
-    res.render("./principal/grade");
-})
+router.get('/parameterTable', async (req, res) => {
+    const appraisalId = req.query.appraisal_id;
+    const selectedCriteriaIds = req.query.criteria; // Get the selected criteria from the query
+console.log(selectedCriteriaIds,appraisalId)
+console.log(req.query)
+    if (!Array.isArray(selectedCriteriaIds)) {
+        return res.status(400).send({ message: 'No criteria selected.' });
+    }
+
+    try {
+        // Fetch criteria details including parameters from the database
+        const criteria = await getCriteriaWithParameters(selectedCriteriaIds);
+        console.log(criteria)
+        // Render the parameter table page with the criteria and appraisalId
+        res.render('./principal/parameterTable', {
+            criteria,
+            appraisalId,
+            message: `Selected ${selectedCriteriaIds.length} criteria.`
+        });
+    } catch (error) {
+        console.error('Error fetching criteria:', error);
+        res.status(500).send({ message: 'Internal server error.' });
+    }
+});
+
+
+
+
+// Endpoint to add a new parameter
+router.post('/add-parameter', (req, res) => {
+    const { criteria_id, parameter_description, parameter_max_marks, parameter_description_type } = req.body;
+
+    if (!criteria_id || !parameter_description || !parameter_max_marks || !parameter_description_type) {
+        return res.status(400).json({ error: 'Missing required fields.' });
+    }
+
+    const insertQuery = `INSERT INTO c_parameter_master (criteria_id, parameter_description, parameter_max_marks, parameter_description_type) VALUES (?, ?, ?, ?)`;
+    facultyDb.query(insertQuery, [criteria_id, parameter_description, parameter_max_marks, parameter_description_type], (err, result) => {
+        if (err) {
+            console.error('Error inserting new parameter:', err);
+            return res.status(500).json({ error: 'Database error inserting parameter.' });
+        }
+
+        res.json({ message: 'Parameter added successfully.', parameter_id: result.insertId });
+    });
+});
+
+
+
+
+router.get("/criteriaMarks/:appraisal_id", async (req, res) => {
+    const appraisal_id = req.params.appraisal_id;
+
+    try {
+        // SQL query to fetch criteria data based on the appraisal_id
+        const [criteriaData] = await facultyDb.query(`
+            SELECT 
+                cm.criteria_id AS criteria_name,
+                COUNT(acp.c_parameter_id) AS total_parameters,
+                SUM(acp.total_marks) AS total_marks
+            FROM 
+                criteria_master cm
+            LEFT JOIN 
+                apprisal_criteria_parameter_master acp ON cm.criteria_id = acp.criteria_id
+            WHERE 
+                acp.appraisal_id = ?
+            GROUP BY 
+                cm.criteria_id
+        `, [appraisal_id]);
+
+        // Render the criteriaMarks EJS template with the fetched criteriaData
+        res.render("./principal/criteriaMarks", { criteriaData ,appraisal_id});
+    } catch (error) {
+        console.error('Error fetching criteria data:', error);
+        res.status(500).send('Server Error');
+    }
+});
+
+const insertIntoAppraisalDepartments = async (appraisalId, departmentId, institutionId) => {
+    try {
+        await facultyDb.query(`
+            INSERT INTO appraisal_departments (appraisal_id, department_id, institution_id, status)
+            VALUES (?, ?, ?, 'active')`,
+            [appraisalId, departmentId, institutionId]
+        );
+    } catch (error) {
+        if (error.code !== 'ER_DUP_ENTRY') {
+            throw error;  // Re-throw any other errors
+        }
+        console.log(`Duplicate entry for department ${departmentId}, skipping...`);
+    }
+}
+
+router.post("/appraisal/create", async (req, res, next) => {
+    const { cycle_name, department_name, start_date, end_date } = req.body;
+    const institutionId = req.user.institution_id;
+    const userId = req.user.user_id;
+
+    try {
+        const [user_id_query] = await facultyDb.query(`SELECT user_id FROM user_master where user_type_id = ?`, [userId]);
+        const user_id = user_id_query[0].user_id;
+
+        const [appraisalResult] = await facultyDb.query(
+            `INSERT INTO appraisal_master (appraisal_cycle_name, user_id, status,start_date,end_date)
+             VALUES (?, ?,'inactive', ?,?)`,
+            [cycle_name, user_id,start_date,end_date]
+        );
+
+        if (appraisalResult.affectedRows > 0) {
+            const [appraisal] = await facultyDb.query('SELECT appraisal_id FROM appraisal_master WHERE id = LAST_INSERT_ID()');
+            const appraisalId = appraisal[0].appraisal_id;
+
+            if (department_name === 'all') {
+                const [departments] = await facultyDb.query(
+                    'SELECT dept_id FROM department_master WHERE institution_id = ?',
+                    [institutionId]
+                );
+
+                for (const department of departments) {
+                    const [existingEntry] = await facultyDb.query(`
+                        SELECT * FROM appraisal_departments WHERE appraisal_id = ? AND department_id = ? AND institution_id = ?
+                    `, [appraisalId, department.dept_id, institutionId]);
+
+                    if (existingEntry.length === 0) {
+                        await insertIntoAppraisalDepartments(appraisalId, department.dept_id, institutionId);
+                    }
+                }
+                res.json({ success: true, appraisalId: appraisalId });
+               
+            } else {
+                const [departmentResult] = await facultyDb.query(`
+                    SELECT dept_id FROM department_master WHERE department_name = ? AND institution_id = ?
+                `, [department_name, institutionId]);
+
+                if (departmentResult.length === 0) {
+                    return res.json({ success: false, message: 'Department not found' });
+                }
+
+                const departmentId = departmentResult[0].dept_id;
+                await insertIntoAppraisalDepartments(appraisalId, departmentId, institutionId);
+
+                res.json({ success: true, appraisalId: appraisalId });
+            }
+        }
+    } catch (error) {
+        console.error('Error creating appraisal cycle:', error);
+        next(error);  // Pass the error to the error handling middleware
+    }
+});
+
+router.get('/parameterReview', async (req, res) => {
+    try {
+        const appraisalId = req.query.appraisal_id;  // Fetch appraisal ID from query
+        const selectedCriteria = req.query.criteria; // This will be an array of selected criteria
+        const instituteId = req.user.institution_id;
+        console.log(selectedCriteria)
+        // Check if criteria are selected
+        if (!selectedCriteria || selectedCriteria.length === 0) {
+            return res.status(400).json({
+                message: 'No criteria selected. Please select at least one criterion.'
+            });
+        }
+
+        // Fetch criteria details
+        const criteriaQuery = `SELECT criteria_id, criteria_description FROM criteria_master WHERE criteria_id IN (?)`;
+        const [criteria] = await facultyDb.query(criteriaQuery, [selectedCriteria]);
+
+        // Check if any criteria were found
+        if (criteria.length === 0) {
+            return res.status(404).json({
+                message: 'No criteria found for the selected IDs.'
+            });
+        }
+
+        // Convert criteria into a query string format
+        const criteriaParams = criteria.map(criterion => `criteria[]=${criterion.criteria_id}`).join('&');
+
+        // Redirect to /parameterTable route with appraisalId and criteria as query params
+        res.redirect(`/Principal/parameterTable?appraisalId=${appraisalId}&${criteriaParams}`);
+    } catch (error) {
+        console.error('Error processing criteria selection:', error);
+        res.status(500).json({
+            message: 'Internal Server Error'
+        });
+    }
+});
+
+
+
+
+
+
+
+router.post('/addCriteria', async (req, res) => {
+    const { criteria_description, parameter_description, total_marks } = req.body;
+
+    try {
+        // Insert new criteria into criteria_master table
+        await facultyDb.query('INSERT INTO criteria_master (criteria_description, type) VALUES (?, "appraisal")', [criteria_description]);
+
+        // Retrieve the criteria_id of the newly inserted criteria using a SELECT query
+        const [criteriaResult] = await facultyDb.query('SELECT criteria_id FROM criteria_master WHERE criteria_description = ? ORDER BY criteria_id DESC LIMIT 1', [criteria_description]);
+        
+        // Check if the criteriaResult is valid and contains the criteria_id
+        if (criteriaResult.length > 0) {
+            const criteriaId = criteriaResult[0].criteria_id; // Get the first result's criteria_id
+
+
+
+            // Send success response including the criteria ID
+            return res.json({ message: 'Criteria and parameters added successfully!', criteriaId: criteriaId });
+        } else {
+            return res.status(500).json({ message: 'Failed to retrieve criteria ID.' });
+        }
+    } catch (error) {
+        console.error(error);
+        res.status(500).json({ message: 'An error occurred while adding criteria and parameters.' });
+    }
+});
+
+
+router.post("/getParameters", async (req, res) => {
+    try {
+        const criteriaId = req.body.criteriaId; // Get the criteria ID from the request
+        const parameters = await getParametersByCriteriaId(criteriaId); // Fetch parameters
+
+        res.status(200).json({ parameters });
+    } catch (error) {
+        console.error('Error fetching parameters:', error);
+        res.status(500).json({ message: "Internal Server Error" });
+    }
+});
+router.post('/addParameter', async (req, res) => {
+    const { criteriaId, description, marks } = req.body;
+
+    // Basic input validation
+    if (!criteriaId || !description || typeof marks === 'undefined') {
+        return res.status(400).json({ message: 'Missing or invalid fields: criteriaId, description, or marks.' });
+    }
+
+    try {
+        const query = `
+            INSERT INTO c_parameter_master (criteria_id, parameter_description, parameter_max_marks, status)
+            VALUES (?, ?, ?, 'active')
+        `;
+        
+        const result = await facultyDb.query(query, [criteriaId, description, marks]);
+
+        // Get the ID of the newly inserted parameter
+        const newParameterId = result.insertId; 
+        
+        // Prepare the new parameter object to return
+        const newParameter = {
+            parameter_id: newParameterId,
+            criteria_id: criteriaId,
+            parameter_description: description,
+            parameter_max_marks: marks,
+            status: 'active'
+        };
+
+        res.status(201).send({ message: 'Parameter added successfully', parameter: newParameter });
+    } catch (error) {
+        console.error('Error adding parameter:', error.message);
+        res.status(500).json({ message: 'Internal Server Error', error: error.message });
+    }
+});
+
+
+
+
+router.post('/submitParameters', async (req, res) => {
+    console.log("Test");
+
+    const { parameters } = req.body; // Destructure parameters from request body
+
+    // Check if parameters are provided
+    if (!parameters || parameters.length === 0) {
+        return res.status(400).json({ message: 'No parameters provided.' });
+    }
+
+    // Populate appraisal_id for each parameter
+    const parametersWithAppraisalId = parameters.map(param => ({
+        criteria_id: param.criteria_id,
+        c_parameter_id: param.c_parameter_id,
+        appraisal_id: param.appraisal_id,
+        total_marks: param.total_marks
+    }));
+
+    // Optionally remove duplicates
+    const uniqueParameters = Array.from(new Set(parametersWithAppraisalId.map(param => JSON.stringify(param))))
+                                  .map(param => JSON.parse(param));
+
+    const connection = await facultyDb.getConnection(); // Get a connection from the pool
+
+    try {
+        await connection.beginTransaction(); // Start a transaction
+
+        // Prepare an array to hold all the insert promises
+        const insertPromises = uniqueParameters.map(param => {
+            return connection.query(
+                `INSERT INTO apprisal_criteria_parameter_master (criteria_id, c_parameter_id, appraisal_id, total_marks)
+                 VALUES (?, ?, ?, ?)`,
+                [param.criteria_id, param.c_parameter_id, param.appraisal_id, param.total_marks]
+            );
+        });
+
+        await Promise.all(insertPromises); // Wait for all inserts to complete
+
+        await connection.commit(); // Commit the transaction
+        
+        // Send a JSON response indicating success with the redirect URL
+        res.json({ message: 'Parameters submitted successfully!', redirectUrl: `/principal/criteriaMarks/${parameters[0].appraisal_id}` });
+
+    } catch (error) {
+        await connection.rollback(); // Rollback the transaction in case of an error
+        console.error('Error inserting parameters:', error);
+
+        // Check if the error is a deadlock error
+        if (error.code === 'ER_LOCK_DEADLOCK') {
+            return res.status(409).json({ message: 'Deadlock occurred. Please try again.' });
+        }
+        
+        return res.status(500).json({ message: 'Failed to add parameters.' });
+    } finally {
+        connection.release(); // Release the connection back to the pool
+    }
+});
+
+
+
+
+
+
+
+
+
+
+
+
 
 router.get('/logout', (req, res) => {
     res.clearCookie('token');

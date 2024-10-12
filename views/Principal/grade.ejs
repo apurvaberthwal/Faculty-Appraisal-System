@@ -6,135 +6,159 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Grading Table</title>
     <style>
-        body {
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+             body {
             background: linear-gradient(120deg, #3a7bd5 0%, #3a6073 100%);
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
             margin: 0;
             padding: 0;
-            color: #333;
+            color: #f0f0f0;
         }
-        h1 {
+
+        .container {
+            width: 90%;
+            margin: 20px auto;
+            padding: 30px;
+            background-color: rgba(255, 255, 255, 0.05);
+            border-radius: 12px;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.2);
+        }
+
+        h2 {
+            font-size: 28px;
             text-align: center;
-            margin-top: 20px;
-            font-size: 2.5em;
-            color: white;
-            letter-spacing: 1px;
-            text-transform: uppercase;
+            margin-bottom: 20px;
+            color: #f2f2f2;
         }
+
         table {
-            width: 50%;
-            margin: 30px auto;
+            width: 100%;
             border-collapse: collapse;
-            background-color: #fff;
-            border-radius: 8px;
-            overflow: hidden;
-            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+            margin-bottom: 20px;
+            background-color: rgba(255, 255, 255, 0.05);
         }
+
         th, td {
             padding: 15px;
+            text-align: left;
             border: 1px solid #ddd;
-            text-align: center;
-            font-size: 1.1em;
+            color: #f0f0f0;
+            font-size: 16px;
         }
+
         th {
-            background-color: #1E90FF;
+            background-color: #3498db;
+            color: #fff;
+        }
+
+        tbody tr:nth-child(even) {
+            background-color: rgba(255, 255, 255, 0.1);
+        }
+
+        tbody tr:hover {
+            background-color: rgba(255, 255, 255, 0.2);
+        }
+
+        .button-container {
+            display: flex;
+            justify-content: center;
+            margin-top: 20px;
+            position: relative;
+        }
+
+        .add-button {
+            background-color: #2ecc71;
             color: white;
-            text-transform: uppercase;
-            font-weight: bold;
-            letter-spacing: 1px;
-        }
-        td {
-            background-color: #e6f7ff;
-        }
-        tr:nth-child(even) td {
-            background-color: #cceeff;
-        }
-        tr:hover td {
-            background-color: #b3e0ff;
+            padding: 10px;
+            border: none;
+            border-radius: 50%;
             cursor: pointer;
+            font-size: 20px;
+            width: 40px;
+            height: 40px;
+            line-height: 0;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            position: absolute;
+            bottom: 0;
+            right: 0;
         }
-        input {
-            width: 80px;
-            padding: 5px;
-            text-align: center;
-            border: 1px solid #ddd;
+
+        .add-button:hover {
+            background-color: #27ae60;
+        }
+
+        button {
+            background-color: #00ca11;
+            color: white;
+            border: none;
+            padding: 12px 20px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 16px;
+            transition: background-color 0.3s ease;
+        }
+
+        button:hover {
+            background-color: #5eff50;
+        }
+
+        button {
+            background-color: #007bff; /* Blue background for buttons */
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            cursor: pointer;
             border-radius: 4px;
-            font-size: 1em;
         }
-        .error, .success {
-            text-align: center;
-            margin-top: 10px;
+
+        button:hover {
+            background-color: #0056b3; /* Darker blue on hover */
         }
+
         .error {
             color: red;
         }
+
         .success {
             color: green;
         }
-        button {
-            display: block;
-            margin: 20px auto;
-            padding: 10px 20px;
-            background-color: #1E90FF;
-            color: white;
-            border: none;
-            border-radius: 4px;
-            font-size: 1.1em;
-            cursor: pointer;
-        }
-        button:hover {
-            background-color: #005cbf;
-        }
-        /* Modal Styles */
+
+        /* Modal styles */
         .modal {
             display: none;
             position: fixed;
-            z-index: 9999;
-            left: 0;
             top: 0;
+            left: 0;
             width: 100%;
             height: 100%;
-            background: rgba(0, 0, 0, 0.6);
+            background-color: rgba(0, 0, 0, 0.5);
             justify-content: center;
             align-items: center;
         }
+
         .modal-content {
-            background-color: #fefefe;
+            background-color: white;
             padding: 20px;
-            border-radius: 8px;
+            border-radius: 4px;
             width: 400px;
             text-align: center;
-            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.3);
+            border: 2px solid #007bff; /* Blue border for modal */
         }
+
         .modal-header {
-            font-size: 1.5em;
-            margin-bottom: 20px;
+            font-size: 18px;
+            color: #007bff; /* Blue text for modal header */
+            margin-bottom: 15px;
         }
-        /* Align buttons horizontally */
-        .modal-buttons {
-            display: flex;
-            justify-content: center;
-            gap: 20px; /* Add spacing between buttons */
-        }
+
         .modal-buttons button {
-            padding: 10px 20px;
-            font-size: 1em;
-            border: none;
-            cursor: pointer;
-            border-radius: 4px;
-        }
-        #yesButton {
-            background-color: #2ecc71;
-            color: white;
-        }
-        #noButton {
-            background-color: #e74c3c;
-            color: white;
+            margin: 5px;
         }
     </style>
 </head>
 <body>
-
+<div class="container">
     <h1>Grading System</h1>
     <p>Appraisal ID: <%= appraisal_id %></p>
     <p>Total Marks: <%= total_marks %></p>
@@ -146,7 +170,7 @@
             <div class="modal-header">Appraisal Cycle Created Successfully!</div>
             <p>Do you wish to add committee members?</p>
             <div class="modal-buttons">
-                <button id="yesButton" onclick="redirectTo('/principal/createCommittee')">Yes</button>
+                <button id="yesButton" onclick="redirectTo('/principal/appraisal/createCommittee/<%= appraisal_id %>')">Yes</button>
                 <button id="noButton" onclick="redirectTo('/principal/dashboard')">No</button>
             </div>
         </div>
@@ -183,8 +207,8 @@
             </tr>
         </tbody>
     </table>
-
     <button onclick="submitGrades()">Submit</button>
+</div>
 
     <script>
         function validateGrades() {
@@ -296,4 +320,4 @@
         }
     </script>
 </body>
-</html>    
+</html>      

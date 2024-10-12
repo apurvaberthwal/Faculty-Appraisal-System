@@ -97,6 +97,46 @@
         text-align: center;
         display: block;
     }
+
+    /* Modal Styling */
+    .modal {
+        display: none;
+        position: fixed;
+        z-index: 9999;
+        left: 0;
+        top: 0;
+        width: 100%;
+        height: 100%;
+        background: rgba(0, 0, 0, 0.6);
+        align-items: center;
+        justify-content: center;
+    }
+
+    .modal-content {
+        background-color: #fefefe;
+        padding: 20px;
+        border-radius: 10px;
+        width: 90%;
+        max-width: 400px;
+        box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
+        text-align: center;
+    }
+
+    .modal-header {
+        font-size: 24px;
+        margin-bottom: 15px;
+    }
+
+    .modal-buttons {
+        display: flex;
+        justify-content: center;
+        margin-top: 20px;
+    }
+
+    .modal-buttons button {
+        padding: 10px 15px;
+    }
+
     </style>
 </head>
 <body>
@@ -132,6 +172,17 @@
         </form>
     </div>
 
+    <!-- Success/Error Popup Modal -->
+    <div id="messageModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">Notification</div>
+            <p id="modalMessage">Message content here...</p>
+            <div class="modal-buttons">
+                <button id="closeModalButton">OK</button>
+            </div>
+        </div>
+    </div>
+
     <script>
         document.getElementById('appraisal-form').addEventListener('submit', async function(event) {
             event.preventDefault();
@@ -140,6 +191,22 @@
             const departmentName = document.getElementById('department-name').value;
             const startDate = document.getElementById('start-date').value;
             const endDate = document.getElementById('end-date').value;
+            
+            const messageModal = document.getElementById('messageModal');
+            const modalMessage = document.getElementById('modalMessage');
+            const closeModalButton = document.getElementById('closeModalButton');
+
+            // Function to show the modal with a message
+            function showModal(message) {
+                modalMessage.textContent = message;
+                messageModal.style.display = 'flex'; // Show modal
+            }
+
+            // Close modal when clicking OK button
+            closeModalButton.addEventListener('click', () => {
+                messageModal.style.display = 'none';
+                // Optionally redirect after success
+            });
 
             try {
                 const response = await fetch('/principal/appraisal/create', {
@@ -157,16 +224,25 @@
 
                 const data = await response.json();
                 if (data.success) {
-                    alert('Appraisal cycle created successfully!');
+                    showModal('Appraisal cycle created successfully!');
                     document.getElementById('appraisal-form').reset();
-                    window.location.href = `/principal/criteriaSelection/${data.appraisalId}`;
+                    setTimeout(() => {
+                        window.location.href = `/principal/criteriaSelection/${data.appraisalId}`;
+                    }, 1500); // Optionally redirect after 1.5 seconds
                 } else {
-                    alert('Failed to create appraisal cycle.');
+                    showModal('Failed to create appraisal cycle.');
                 }
             } catch (error) {
-                alert('An error occurred. Please try again.');
+                showModal('An error occurred. Please try again.');
             }
         });
+
+        // Close modal when clicking outside of it
+        window.onclick = function(event) {
+            if (event.target === messageModal) {
+                messageModal.style.display = 'none';
+            }
+        };
     </script>
 </body>
 </html>

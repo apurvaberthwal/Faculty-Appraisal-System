@@ -600,6 +600,139 @@ router.get('/createCommittee',async (req, res) => {
     });
 
 
+router.get('/appraisal/createCommittee/:appraisalId', async (req, res) => {
+        try {
+            const principalId = req.user.id; // Assuming you have authentication set up
+            const appraisalId = req.params.appraisalId;
+            const instituteId = req.user.institution_id;
+            
+            // Fetch all active employees for the principal's institute
+            const activeEmployeesQuery = `
+                SELECT um.user_id, um.email_id, um.first_name, um.last_name, dm.department_name, um.emp_id, um.timestamp as start_date
+                FROM user_master um
+                JOIN department_master dm ON um.dept_id = dm.dept_id
+                JOIN user_type_master utm ON um.user_type_id = utm.user_type_id
+                WHERE um.institution_id = ? AND um.status = 'active' AND utm.user_type_type = 'employee'
+            `;
+            const [employees] = await facultyDb.execute(activeEmployeesQuery, [instituteId]);
+            
+            // Fetch the appraisal cycle name
+            const appraisalSql = `SELECT appraisal_cycle_name FROM appraisal_master WHERE appraisal_id = ?`;
+            const [appraisalCycleRows] = await facultyDb.execute(appraisalSql, [appraisalId]); // Use appraisalId here
+    
+            // Extract the appraisal cycle name from the result
+            const appraisal_cycle_name = appraisalCycleRows.length > 0 ? appraisalCycleRows[0].appraisal_cycle_name : 'Unknown';
+            console.log(employees, ', ',appraisal_cycle_name);
+            // Render the page with the employees and the appraisal cycle name
+            res.render('./principal/appraisalCommitteeMember', { employees, appraisal_cycle_name, appraisal_id: appraisalId });
+        }
+        catch (err) {
+            console.error(err);
+            res.status(500).send('Server Error');
+        }
+});
+    
+
+router.post('/appraisal/submit-committee/:appraisal_id', async (req, res) => {
+        const { committeeMembers, start_date,end_date } = req.body;
+        const principalId = req.user.user_id;
+        const instituteId = req.user.institution_id;
+        const appraisalId = req.params.appraisal_id;
+        // Check for missing data
+        if (!committeeMembers || committeeMembers.length === 0 ) {
+            return res.status(400).json({ success: false, message: "Missing committee members or tenure" });
+        }
+    
+        // Get current date for start_date
+        const startDate =start_date;
+    
+        // Calculate endDate by adding the tenure (in years) to the start_date
+        const endDate = end_date;
+        console.log(committeeMembers, startDate, endDate);
+    
+        // Begin transaction
+        const connection = await facultyDb.getConnection();
+        try {
+            await connection.beginTransaction();
+    
+            // Insert each committee member into committee_member_master
+            const committeeMembersDetails = []; // Array to store details for sending emails
+    
+            for (const memberId of committeeMembers) {
+                // Insert each committee member into committee_member_master
+                const insertQuery = `
+                    INSERT INTO committee_member_master (user_id, institution_id, start_date, end_date,appraisal_id) 
+                    VALUES (?, ?, ?, ?,?);
+                `;
+                await connection.query(insertQuery, [memberId, instituteId, startDate, endDate,appraisalId]);
+    
+                // Fetch user details for email
+                const selectUserDetailsQuery = `
+                SELECT um.user_id, um.email_id, um.first_name, um.last_name, dm.department_name, im.institution_name
+                FROM user_master um
+                JOIN department_master dm ON um.dept_id = dm.dept_id
+                JOIN institution_master im ON um.institution_id = im.institution_id
+                WHERE um.user_id = ?;
+                `;
+                const [userDetails] = await connection.query(selectUserDetailsQuery, [memberId]);
+                if (userDetails.length > 0) {
+                    const memberDetail = userDetails[0];
+                    memberDetail.start_date = startDate;
+                    memberDetail.end_date = endDate;
+                    committeeMembersDetails.push(memberDetail);
+                }
+            }
+            console.log(committeeMembersDetails)
+    
+            // Update user_type_type in user_type_master
+            const userTypeIdsArray = [];
+            for (const memberId of committeeMembers) {
+                const selectQuery = `
+                    SELECT user_type_id 
+                    FROM user_master 
+                    WHERE user_id = ?;
+                `;
+                const [userTypeIdRows] = await connection.query(selectQuery, [memberId]);
+    
+                if (userTypeIdRows.length > 0) {
+                    userTypeIdsArray.push(userTypeIdRows[0].user_type_id);
+                }
+            }
+    
+            for (const userTypeId of userTypeIdsArray) {
+                const updateQuery = `
+                    UPDATE user_type_master 
+                    SET user_type_type = 'committee' 
+                    WHERE user_type_id = ?;
+                `;
+                await connection.query(updateQuery, [userTypeId]);
+            }
+    
+            // Commit transaction
+            await connection.commit();
+    
+            // Send emails to the committee members
+            await sendCommitteeEmails(committeeMembersDetails);
+    
+            res.json({ success: true, message: "Committee members submitted and updated successfully!" });
+        } catch (err) {
+            // Rollback transaction in case of error
+            await connection.rollback();
+            console.error("Error processing committee submission:", err);
+            res.status(500).json({ success: false, message: "Failed to submit committee members" });
+        } finally {
+            // Release the connection
+            connection.release();
+        }
+});
+
+
+
+
+
+
+
+
 router.post('/submit-committee', async (req, res) => {
         const { committeeMembers, start_date,end_date } = req.body;
         const principalId = req.user.user_id;

@@ -1,117 +1,126 @@
 <!DOCTYPE html>
+<%- include('nav') %> <!-- Navigation bar include -->
 <html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Add Committee Members</title>
+    <title>Welcome to Performance 360</title>
     <style>
+        /* Overall body styling */
         body {
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
             background: linear-gradient(120deg, #3a7bd5 0%, #3a6073 100%);
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
             margin: 0;
             padding: 0;
-            color: #333;
         }
+
+        /* Container */
+       
+        
+        .container {
+            width: 70%;
+            margin: 20px auto;
+            padding: 30px;
+            background-color: rgba(0, 0, 0, 0.7);
+            color: white;
+            border-radius: 12px;
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+        }
+
+        /* Headings */
+        h1, h2 {
+            text-align: center;
+            color: #f2f2f2;
+            text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.2);
+        }
+
         h1 {
+            font-size: 32px;
+        }
+
+        h2 {
+            font-size: 22px;
+            margin-top: 30px;
+        }
+
+        /* User Details */
+        .user-details {
             text-align: center;
-            margin-top: 20px;
-            font-size: 2.5em;
-            color: white;
-            letter-spacing: 1px;
-            text-transform: uppercase;
-        }
-        form {
-            width: 50%;
-            margin: 30px auto;
-            background-color: #fff;
-            padding: 20px;
-            border-radius: 8px;
-            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
-        }
-        label {
-            font-size: 1.2em;
-            display: block;
-            margin-bottom: 10px;
-        }
-        input[type="text"], input[type="email"] {
-            width: 100%;
-            padding: 10px;
             margin-bottom: 20px;
-            border: 1px solid #ddd;
-            border-radius: 4px;
-            font-size: 1.1em;
         }
-        button {
-            display: block;
-            width: 100%;
-            padding: 10px;
-            background-color: #1E90FF;
+
+        .user-details p {
+            font-size: 18px;
+            color: #f0f0f0;
+        }
+
+        /* Active Appraisal Cycles */
+        ul {
+            list-style-type: none;
+            padding: 0;
+        }
+
+        li {
+            margin: 10px 0;
+        }
+
+        a {
             color: white;
-            border: none;
-            border-radius: 4px;
-            font-size: 1.1em;
-            cursor: pointer;
+            text-decoration: none;
+            font-weight: bold;
+            font-size: 18px;
         }
-        button:hover {
-            background-color: #005cbf;
+
+        a:hover {
+            text-decoration: underline;
         }
-        .success, .error {
-            text-align: center;
+
+        .cycle {
+            padding: 15px;
+            background-color: rgba(255, 255, 255, 0.1);
+            border-radius: 6px;
+            transition: background-color 0.3s ease;
+        }
+
+        .cycle:hover {
+            background-color: rgba(255, 255, 255, 0.2);
+        }
+
+        /* Message for Performance 360 */
+        .performance-msg {
             margin-top: 20px;
-        }
-        .success {
-            color: green;
-        }
-        .error {
-            color: red;
+            text-align: center;
+            color: #ffeb3b;
+            font-weight: bold;
+            font-size: 1.2em;
         }
     </style>
 </head>
 <body>
+    <div class="container">
+        <h1>Welcome to Performance 360, <%= user_name.first_name %> <%= user_name.last_name %>!</h1>
+        
+       
 
-    <h1>Add Committee Members</h1>
+        <!-- Performance 360 message -->
+        <div class="performance-msg">
+            Performance 360 is now active. Make sure to complete your appraisals on time!
+        </div>
 
-    <form id="committeeForm" onsubmit="return handleFormSubmit(event)">
-        <label for="name">Member Name</label>
-        <input type="text" id="name" name="name" placeholder="Enter member name" required>
-
-        <label for="email">Member Email</label>
-        <input type="email" id="email" name="email" placeholder="Enter member email" required>
-
-        <label for="role">Member Role</label>
-        <input type="text" id="role" name="role" placeholder="Enter member role (e.g. Chair, Secretary)" required>
-
-        <button type="submit">Add Member</button>
-
-        <div class="success" id="success-message"></div>
-        <div class="error" id="error-message"></div>
-    </form>
-
-    <script>
-        function handleFormSubmit(event) {
-            event.preventDefault(); // Prevent form submission
-
-            const name = document.getElementById('name').value;
-            const email = document.getElementById('email').value;
-            const role = document.getElementById('role').value;
-
-            if (name && email && role) {
-                // Clear any previous error
-                document.getElementById('error-message').innerText = '';
-
-                // Simulate form success message
-                document.getElementById('success-message').innerText = 'Committee Member Added Successfully!';
-
-                // Redirect after 2 seconds to a new form or page
-                setTimeout(function() {
-                    window.location.href = "thankyou.html"; // Change this to the actual redirect page URL
-                }, 2000);
-            } else {
-                document.getElementById('success-message').innerText = '';
-                document.getElementById('error-message').innerText = 'Please fill all fields correctly.';
-            }
-        }
-    </script>
-
+        <!-- Section for active appraisal cycles -->
+        <h2>Active Appraisal Cycles</h2>
+        <ul>
+            <% if (data.length > 0) { %>
+                <% data.forEach(function(appraisal) { %>
+                    <li class="cycle">
+                        <strong><%= appraisal.appraisal_cycle_name %>:</strong> This appraisal cycle is active now. 
+                        <a href="/faculty/criteria-status/<%= appraisal.appraisal_id %>">Click here to apply</a>
+                    </li>
+                <% }) %>
+            <% } else { %>
+                <p>No active appraisal cycles at the moment.</p>
+            <% } %>
+        </ul>
+    </div>
 </body>
 </html>

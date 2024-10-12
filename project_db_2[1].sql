@@ -699,6 +699,3 @@ ADD appraisal_id VARCHAR(50);
 ALTER TABLE document_master
 ADD CONSTRAINT fk_appraisal_id 
 FOREIGN KEY (appraisal_id) REFERENCES appraisal_master(appraisal_id);
-
-
---

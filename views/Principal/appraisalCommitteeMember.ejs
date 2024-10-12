@@ -1,0 +1,591 @@
+<%- include('nav') %>
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Active Employees</title>
+    <style>
+    /* Overall body styling */
+    /* Overall body styling */
+body {
+    background: linear-gradient(120deg, #3a7bd5 0%, #3a6073 100%);
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    margin: 0;
+    padding: 0;
+}
+
+/* Container */
+.container {
+    width: 90%;
+    margin: 20px auto;
+    padding: 30px;
+    background-color: rgba(255, 255, 255, 0.1);
+    color: white;
+    border-radius: 12px;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.2);
+    transition: box-shadow 0.3s;
+}
+
+.container:hover {
+    box-shadow: 0 8px 30px rgba(0, 0, 0, 0.4);
+}
+
+/* Headings */
+h2 {
+    font-size: 28px;
+    text-align: center;
+    margin-bottom: 30px;
+    color: #f2f2f2;
+    text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.2);
+}
+
+/* Control group (inputs, labels) */
+.control-group label {
+    font-size: 16px;
+    color: #f0f0f0;
+    font-weight: bold;
+}
+
+.control-group input[type="text"],
+.control-group input[type="number"],
+.control-group input[type="date"] {
+    padding: 10px;
+    width: 100%;
+    max-width: 300px;
+    margin-bottom: 10px;
+    border-radius: 6px;
+    background-color: rgba(255, 255, 255, 0.9);
+    border: 1px solid #ddd;
+    color: #333;
+    box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.1);
+    transition: border-color 0.3s;
+}
+
+.control-group input:focus {
+    border-color: #3498db;
+    box-shadow: 0 0 8px rgba(52, 152, 219, 0.5);
+}
+
+/* Controls container - Flexbox for alignment */
+.controls {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 20px;
+    flex-wrap: wrap;
+    gap: 20px; /* Added spacing between elements */
+}
+
+.control-group {
+    flex: 1; /* Ensures all input groups take up equal width */
+    max-width: 300px;
+}
+
+button {
+    background-color: #3498db;
+    color: white;
+    border: none;
+    padding: 12px 20px;
+    border-radius: 6px;
+    cursor: pointer;
+    font-size: 16px;
+    transition: background-color 0.3s ease, transform 0.2s;
+}
+
+button:hover {
+    background-color: #2980b9;
+    transform: scale(1.05);
+}
+
+/* Employee table */
+table {
+    width: 100%;
+    border-collapse: collapse;
+    margin-bottom: 20px;
+    background-color: rgba(255, 255, 255, 0.05);
+}
+
+th, td {
+    padding: 15px;
+    text-align: left;
+    border: 1px solid #ddd;
+    color: #f0f0f0;
+    font-size: 14px;
+}
+
+th {
+    background-color: #3498db;
+    color: #fff;
+    cursor: pointer;
+    position: relative;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+}
+
+    
+    th.sorted-asc::after,
+    th.sorted-desc::after {
+        content: '';
+        position: absolute;
+        right: 10px;
+        top: 50%;
+        transform: translateY(-50%);
+    }
+    
+    th.sorted-asc::after {
+        content: " ▲";
+    }
+    
+    th.sorted-desc::after {
+        content: " ▼";
+    }
+    
+    /* Table row styling */
+    tbody tr:nth-child(even) {
+        background-color: rgba(255, 255, 255, 0.1);
+    }
+    
+    tbody tr:hover {
+        background-color: rgba(255, 255, 255, 0.2);
+        transform: scale(1.01);
+        transition: transform 0.2s;
+    }
+    
+    /* Checkbox styling */
+    .checkbox input[type="checkbox"] {
+        cursor: pointer;
+    }
+    
+    .checkbox input[type="checkbox"]:disabled {
+        cursor: not-allowed;
+    }
+    
+    /* Submit button */
+    .btn-submit {
+        width: 100%;
+        max-width: 200px;
+        margin: 20px auto;
+        text-align: center;
+        display: block;
+    }
+    
+    /* Loading spinner */
+    .loading-overlay {
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background: rgba(0, 0, 0, 0.6);
+        color: white;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        z-index: 9999;
+    }
+    
+    .spinner {
+        border: 8px solid rgba(255, 255, 255, 0.2);
+        border-top: 8px solid #3498db;
+        border-radius: 50%;
+        width: 60px;
+        height: 60px;
+        animation: spin 1s linear infinite;
+    }
+    
+    @keyframes spin {
+        0% { transform: rotate(0deg); }
+        100% { transform: rotate(360deg); }
+    }
+    
+    /* Responsive design */
+    @media (max-width: 768px) {
+        .controls {
+            flex-direction: column;
+            align-items: flex-start;
+        }
+    
+        input[type="text"], input[type="number"] {
+            max-width: 100%;
+        }
+    
+        .date-controls {
+            align-items: flex-start;
+        }
+    
+        button {
+            width: 100%;
+        }
+        
+        }
+        .control-group{
+            display: flex;
+            flex-direction: column;
+            
+    }
+    .control-group select {
+    padding: 10px;
+    width: 100%;
+    max-width: 300px;
+    margin-bottom: 10px;
+    border-radius: 6px;
+    background-color: rgba(255, 255, 255, 0.9);
+    border: 1px solid #ddd;
+    color: #333;
+    box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.1);
+    transition: border-color 0.3s;
+}
+.modal {
+        display: none;
+        position: fixed;
+        z-index: 1;
+        left: 0;
+        top: 0;
+        width: 100%;
+        height: 100%;
+        background-color: rgba(0, 0, 0, 0.5);
+        justify-content: center;
+        align-items: center;
+    }
+
+    .modal-content {
+        background-color: white;
+        padding: 20px;
+        border-radius: 10px;
+        text-align: center;
+        width: 300px;
+    }
+
+    .close {
+        color: #aaa;
+        float: right;
+        font-size: 28px;
+        font-weight: bold;
+        cursor: pointer;
+    }
+
+.control-group select:focus {
+    border-color: #3498db;
+    box-shadow: 0 0 8px rgba(52, 152, 219, 0.5);
+}
+.modal {
+        display: none;
+        position: fixed;
+        z-index: 1;
+        left: 0;
+        top: 0;
+        width: 100%;
+        height: 100%;
+        background-color: rgba(0, 0, 0, 0.5);
+        justify-content: center;
+        align-items: center;
+    }
+
+    .modal-content {
+        background-color: white;
+        padding: 20px;
+        border-radius: 10px;
+        text-align: center;
+        width: 300px;
+    }
+
+    .close {
+        color: #aaa;
+        float: right;
+        font-size: 28px;
+        font-weight: bold;
+        cursor: pointer;
+    }
+
+    .modal-button {
+        margin: 10px;
+        padding: 10px 20px;
+        background-color: #3498db;
+        color: white;
+        border: none;
+        border-radius: 5px;
+        cursor: pointer;
+    }
+
+    .modal-button:hover {
+        background-color: #2980b9;
+    }
+   </style> 
+ 
+</head>
+<body>
+    <div id="successModal" class="modal" style="display:none;">
+        <div class="modal-content">
+            <span class="close">&times;</span>
+            <p id="modalMessage"></p>
+            <button id="closeModalBtn" class="modal-button">Close</button>
+            <button id="redirectBtn" class="modal-button">Proceed</button>
+        </div>
+    </div>
+    
+    <div class="container">
+        <% if (employees.length === 0) { %>
+            <h2>No employees have been added yet.</h2>
+        <% } else { %>
+            <h2>Selected Appraisal Cycle: <span id="appraisal-cycle-display"><%= appraisal_cycle_name %></span></h2>
+            <div id="loading" class="loading-overlay" style="display: none;">
+                <div class="spinner"></div>
+                <p>Loading, please wait...</p>
+            </div>
+        
+            <!-- Committee Selection and Search Fields Aligned Horizontally -->
+            <div class="controls">
+                <div class="control-group">
+                    <label for="search-all">Search</label>
+                    <input type="text" id="search-all" placeholder="Search by Name, Employee ID, or Department" oninput="filterAndSort()">
+                </div>
+    
+                <div class="control-group">
+                    <label for="num-committee">Number of Committee Members</label>
+                    <input type="number" id="num-committee" min="1" max="10" placeholder="Enter number of members" oninput="updateCheckboxes()">
+                </div>
+            
+               
+                
+
+                <!-- Start Date and End Date Fields -->
+                <div class="control-group">
+                    <label for="start-date">Start Date</label>
+                    <input type="date" id="start-date" name="start_date" placeholder="Enter start date">
+                </div>
+    
+                <div class="control-group">
+                    <label for="end-date">End Date</label>
+                    <input type="date" id="end-date" name="end_date" placeholder="Enter end date">
+                </div>
+            </div>
+    
+            <!-- Employee Table -->
+            <table id="employee-table">
+                <thead>
+                    <tr>
+                        <th onclick="setSort(0)">Employee ID</th>
+                        <th onclick="setSort(1)">Name</th>
+                        <th onclick="setSort(2)">Department</th>
+                        <th onclick="setSort(3)">Email</th>
+                        <th onclick="setSort(4)">Start Date</th>
+                        <th style="width: 100px;">Select Committee Member</th>
+                    </tr>                    
+                </thead>
+                <tbody id="employee-body">
+                    <% employees.forEach(employee => { %>
+                        <tr>
+                            <td><%= employee.emp_id %></td>
+                            <td><%= employee.first_name %> <%= employee.last_name %></td>
+                            <td><%= employee.department_name %></td>
+                            <td><%= employee.email_id %></td>
+                            <td>
+                                <% 
+                                let date = new Date(employee.start_date);
+                                let formattedDate = date.toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' });
+                                %>
+                                <%= formattedDate %>
+                            </td>
+                            <td class="checkbox">
+                                <input type="checkbox" name="committee-members" value="<%= employee.user_id %>" onchange="updateCheckboxes()">
+                            </td>
+                        </tr>
+                    <% }) %>
+                </tbody>
+            </table>
+    
+            <!-- Submit Button -->
+            <button id="submit-committee">Submit Committee Members</button>
+        <% } %>
+
+    </div>
+    
+    <script>
+        let sortColumn = -1;  
+        let sortDirection = 1; 
+
+        function showModal(message) {
+    const modal = document.getElementById('successModal');
+    const modalMessage = document.getElementById('modalMessage');
+    const closeModal = document.getElementsByClassName('close')[0];
+    const closeModalBtn = document.getElementById('closeModalBtn');
+    const redirectBtn = document.getElementById('redirectBtn');
+
+    // Set the message inside the modal
+    modalMessage.textContent = message;
+
+    // Display the modal
+    modal.style.display = 'flex';
+
+    // Close the modal when the 'X' or Close button is clicked
+    closeModal.onclick = closeModalBtn.onclick = function() {
+        modal.style.display = 'none';
+        location.reload(); // Refresh the page when modal is closed
+    };
+
+    // Close the modal when user clicks outside of the modal content
+    window.onclick = function(event) {
+        if (event.target === modal) {
+            modal.style.display = 'none';
+            location.reload(); // Refresh the page when modal is closed
+        }
+    };
+
+    // Redirect when the "Proceed" button is clicked
+    redirectBtn.onclick = function() {
+        window.location.href = '/principal/sessionActive';
+    };
+}
+
+        function filterAndSort() {
+            const searchValue = document.getElementById('search-all').value.toLowerCase();
+            const rows = Array.from(document.querySelectorAll('#employee-body tr'));
+
+            rows.forEach(row => {
+                const [id, name, dept] = row.cells;
+                const matches = id.textContent.toLowerCase().includes(searchValue) ||
+                                name.textContent.toLowerCase().includes(searchValue) ||
+                                dept.textContent.toLowerCase().includes(searchValue);
+
+                row.style.display = matches ? '' : 'none';
+            });
+
+            if (sortColumn >= 0) {
+                sortTable(sortColumn);
+            }
+        }
+        function updateCycleDisplay() {
+    const selectedCycle = document.getElementById('appraisal-cycle').value;
+    document.getElementById('appraisal-cycle-display').textContent = selectedCycle;
+}
+
+
+        function setSort(columnIndex) {
+            if (sortColumn === columnIndex) {
+                sortDirection *= -1;
+            } else {
+                sortColumn = columnIndex;
+                sortDirection = 1;
+            }
+            sortTable(columnIndex);
+        }
+
+        function sortTable(columnIndex) {
+            const table = document.getElementById('employee-table');
+            const rows = Array.from(document.querySelectorAll('#employee-body tr')).filter(row => row.style.display !== 'none');
+            const isNumeric = !isNaN(rows[0].cells[columnIndex].textContent.trim());
+
+            rows.sort((a, b) => {
+                const aText = a.cells[columnIndex].textContent.trim();
+                const bText = b.cells[columnIndex].textContent.trim();
+
+                if (isNumeric) {
+                    return sortDirection * (parseFloat(aText) - parseFloat(bText));
+                } else {
+                    return sortDirection * aText.localeCompare(bText);
+                }
+            });
+
+            rows.forEach(row => table.tBodies[0].appendChild(row));
+            updateTableHeaders(columnIndex);
+        }
+
+        function updateTableHeaders(columnIndex) {
+            const headers = document.querySelectorAll('th');
+            headers.forEach(header => header.classList.remove('sorted-asc', 'sorted-desc'));
+
+            if (sortColumn >= 0) {
+                headers[sortColumn].classList.add(sortDirection === 1 ? 'sorted-asc' : 'sorted-desc');
+            }
+        }
+
+        function updateCheckboxes() {
+            const numMembers = parseInt(document.getElementById('num-committee').value);
+            const checkboxes = document.querySelectorAll('input[name="committee-members"]');
+
+            if (!numMembers || isNaN(numMembers)) {
+                checkboxes.forEach(checkbox => checkbox.disabled = true);
+            } else {
+                const checkedCount = document.querySelectorAll('input[name="committee-members"]:checked').length;
+
+                checkboxes.forEach(checkbox => {
+                    checkbox.disabled = checkedCount >= numMembers && !checkbox.checked;
+                });
+            }
+        }
+
+        document.getElementById('submit-committee').addEventListener('click', async function() {
+    const selectedMembers = Array.from(document.querySelectorAll('input[name="committee-members"]:checked'))
+        .map(checkbox => checkbox.value);
+    const numMembers = document.getElementById('num-committee').value;
+    const start_date = document.getElementById('start-date').value;
+    const end_date = document.getElementById('end-date').value;
+
+
+    if (selectedMembers.length !== parseInt(numMembers)) {
+        alert('Please select the correct number of committee members.');
+        return;
+    }
+
+   
+    document.getElementById('loading').style.display = 'flex';
+
+    try {
+        const response = await fetch('/principal/appraisal/submit-committee/<%= appraisal_id%>', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+                committeeMembers: selectedMembers,
+                start_date: start_date,
+                end_date: end_date,
+                appraisal_id:"<%= appraisal_id%>"
+            })
+        });
+        const data = await response.json();
+
+        if (data.success) {
+    // Show a modal instead of an alert
+    showModal('Committee members added successfully.');
+
+    // Clear the form
+    document.getElementById('num-committee').value = '';
+    document.getElementById('start-date').value = '';
+    document.getElementById('end-date').value = '';
+    document.querySelectorAll('input[name="committee-members"]').forEach(cb => cb.checked = false);
+
+    // Fetch the updated employee list
+    // fetchEmployeeData();
+
+    // Redirect after 2 seconds
+    // setTimeout(() => {
+    //     window.location.href = '/principal/sessionActive';
+    // }, 10000);
+}else {
+            alert('Failed to submit committee members.');
+        }
+    } catch (error) {
+        console.log(error);
+        alert('An error occurred. Please try again.'+error);
+    } finally {
+        document.getElementById('loading').style.display = 'none';
+    }
+});
+
+async function fetchEmployeeData() {
+    try {
+        const response = await fetch('/principal/appraisal/createCommittee/<%= appraisal_id%>');
+        const data = await response.text();
+        document.querySelector('body').innerHTML = data;
+    } catch (error) {
+        console.error('Failed to fetch employee data:', error);
+    }
+}
+
+    </script>
+</body>
+</html

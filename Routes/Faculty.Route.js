@@ -407,7 +407,9 @@ router.post('/reset-password', async (req, res) => {
     }
 });
 
-router.get('/criteria-status', async (req, res) => {
+router.get('/criteria-status/:apprisal_id', async (req, res) => {
+    const apprisal_id=req.params.apprisal_id;
+    console.log(apprisal_id);
     console.log("criteria-status");
     const successMsg = req.query.successMsg || "";
     try {
@@ -469,24 +471,46 @@ router.get('/criteria-status', async (req, res) => {
         res.status(500).send('Server error');
     }
 });
+
+
 router.get("/appraisalnum", async (req, res) => {
     console.log(req.user.user_id)
     try {
-        const [institute_id] = await facultyDb.query('select institution_id from user_master where user_type_id = ?', [req.user.user_id]);
-        console.log(institute_id);
-        const institute = institute_id[0].institution_id;
+        // Fetch the institution ID and department ID for the current user
+        const [userDetails] = await facultyDb.query('SELECT institution_id, dept_id FROM user_master WHERE user_type_id = ?', [req.user.user_id]);
+        
+        // Extract institution and department from the result
+        const institute = userDetails[0].institution_id;
+        const department_id = userDetails[0].dept_id;
+
+        console.log('Institution:', institute);
+        console.log('Department ID:', department_id);
+
+        // Query to get the active appraisal cycles for the user's institution and department
         const [results] = await facultyDb.query(`
             SELECT am.* 
             FROM appraisal_master am
             JOIN appraisal_departments ad ON am.appraisal_id = ad.appraisal_id
-            WHERE ad.institution_id = ? AND am.status = 'active'
-        `, [institute]);
-        res.render('./Faculty/dashboard3', { data: results });
+            WHERE ad.institution_id = ? 
+            AND ad.department_id = ? 
+            AND am.status = 'active'
+        `, [institute, department_id]);
+
+        // Fetch user name (first, middle, last)
+        const [user_name] = await facultyDb.query('SELECT first_name, middle_name, last_name FROM user_master WHERE user_type_id = ?', [req.user.user_id]);
+        
+        // Combine the name parts into a single full name
+        const name = user_name[0] ? `${user_name[0].first_name} ${user_name[0].middle_name || ''} ${user_name[0].last_name}`.trim() : 'User';
+
+        // Render the dashboard with the appraisal data and user's name
+        res.render('./Faculty/dashboard3', { data: results, user_name: name });
     } catch (error) {
         console.error('Error fetching appraisal number:', error);
         res.status(500).send('Internal Server Error');
     }
 });
+
+
 
 router.post("/apply", upload.any(), async (req, res) => {
     if (!req.user) {

@@ -1,5 +1,5 @@
-<!DOCTYPE html>
 <%- include('nav') %> <!-- Navigation bar include -->
+<!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
@@ -15,8 +15,6 @@
         }
 
         /* Container */
-       
-        
         .container {
             width: 70%;
             margin: 20px auto;
@@ -41,17 +39,6 @@
         h2 {
             font-size: 22px;
             margin-top: 30px;
-        }
-
-        /* User Details */
-        .user-details {
-            text-align: center;
-            margin-bottom: 20px;
-        }
-
-        .user-details p {
-            font-size: 18px;
-            color: #f0f0f0;
         }
 
         /* Active Appraisal Cycles */
@@ -86,6 +73,86 @@
             background-color: rgba(255, 255, 255, 0.2);
         }
 
+        /* Appraisal cycle name (inside the cycle) */
+        .cycle strong {
+            font-size: 20px;
+            font-weight: bold;
+            color: #ffeb3b;
+            text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.4);
+            display: block;
+            margin-bottom: 5px;
+        }
+
+        /* Flexbox row for link and progress bar */
+        .progress-row {
+            display: flex;
+            align-items: flex-start;
+            justify-content: space-between;
+            gap: 20px;
+        }
+
+        /* Wrapper for progress bar and title */
+        .progress-wrapper {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            width: 250px;
+        }
+
+        /* Progress title */
+        .progress-title {
+            font-size: 14px;
+            color: #f2f2f2;
+            margin-bottom: 5px;
+            text-align: center;
+        }
+
+        /* Progress bar container */
+        .progress-container {
+            position: relative;
+            width: 100%;
+            height: 30px;
+            background-color: rgba(255, 255, 255, 0.2);
+            border-radius: 8px;
+            overflow: hidden;
+            box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.3);
+        }
+
+       /* Progress bar */
+       .progress-bar {
+    height: 100%;
+    background: linear-gradient(90deg, #4caf50 0%, #8bc34a 100%);
+    border-radius: 8px;
+    transition: width 0.5s ease-in-out;
+    box-shadow: 0 3px 3px rgba(0, 0, 0, 0.2);
+    position: relative; /* Make this relative */
+}
+
+.progress-bar span {
+    position: absolute; /* Positioning this absolutely */
+    left: 50%; /* Center horizontally */
+    top: 50%; /* Center vertically */
+    transform: translate(-50%, -50%); /* Adjust position to truly center */
+    color: white;
+    font-weight: bold;
+    font-size: 16px;
+    text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.5);
+}.progress-container {
+    position: relative;
+}
+
+.progress-text {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+}
+
+
         /* Message for Performance 360 */
         .performance-msg {
             margin-top: 20px;
@@ -98,10 +165,8 @@
 </head>
 <body>
     <div class="container">
-        <h1>Welcome to Performance 360, <%= user_name.first_name %> <%= user_name.last_name %>!</h1>
+        <h1>Welcome to Performance 360, <%= user_name %>!</h1>
         
-       
-
         <!-- Performance 360 message -->
         <div class="performance-msg">
             Performance 360 is now active. Make sure to complete your appraisals on time!
@@ -113,8 +178,18 @@
             <% if (data.length > 0) { %>
                 <% data.forEach(function(appraisal) { %>
                     <li class="cycle">
-                        <strong><%= appraisal.appraisal_cycle_name %>:</strong> This appraisal cycle is active now. 
-                        <a href="/faculty/criteria-status/<%= appraisal.appraisal_id %>">Click here to apply</a>
+                        <strong><%= appraisal.appraisal_cycle_name %>  :</strong> This appraisal cycle is active now.
+                        <div class="progress-row">
+                            <a href="/faculty/criteria-status/<%= appraisal.appraisal_id %>">Click here to apply</a>
+                            <div class="progress-wrapper">
+                                <span class="progress-title">Percentage Bar</span>
+                                <div class="progress-container">
+                                    <div class="progress-bar <%= appraisal.criteriaAppliedPercentage === 0 ? 'zero' : '' %>" style="width:<%= appraisal.criteriaAppliedPercentage %>%;"></div>
+                                    <div class="progress-text">
+                                        <%= appraisal.criteriaAppliedPercentage === 0 || appraisal.criteriaAppliedPercentage === null ? '0%' : appraisal.criteriaAppliedPercentage + '%' %>
+                                    </div>
+                                </div>
+                            </div>
                     </li>
                 <% }) %>
             <% } else { %>

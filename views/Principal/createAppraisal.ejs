@@ -8,134 +8,193 @@
     <title>Create Appraisal Cycle</title>
 
     <style>
-    /* Your CSS styling */
-    body {
-        background: linear-gradient(120deg, #3a7bd5 0%, #3a6073 100%);
-        font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-        margin: 0;
-        padding: 0;
-    }
+        /* General styles */
+        body {
+            background: linear-gradient(120deg, #3a7bd5 0%, #3a6073 100%);
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            margin: 0;
+            padding: 0;
+        }
 
-    .container {
-        width: 50%;
-        margin: 20px auto;
-        padding: 30px;
-        background-color: rgba(255, 255, 255, 0.1);
-        color: white;
-        border-radius: 12px;
-        box-shadow: 0 4px 20px rgba(0, 0, 0, 0.2);
-        transition: box-shadow 0.3s;
-    }
+        .container {
+            width: 50%;
+            margin: 20px auto;
+            padding: 30px;
+            background-color: rgba(255, 255, 255, 0.1);
+            color: white;
+            border-radius: 12px;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.2);
+            transition: box-shadow 0.3s;
+        }
 
-    .container:hover {
-        box-shadow: 0 8px 30px rgba(0, 0, 0, 0.4);
-    }
+        .container:hover {
+            box-shadow: 0 8px 30px rgba(0, 0, 0, 0.4);
+        }
 
-    h2 {
-        font-size: 28px;
-        text-align: center;
-        margin-bottom: 30px;
-        color: #f2f2f2;
-        text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.2);
-    }
+        h2 {
+            font-size: 28px;
+            text-align: center;
+            margin-bottom: 30px;
+            color: #f2f2f2;
+            text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.2);
+        }
 
-    .control-group label {
-        font-size: 16px;
-        color: #f0f0f0;
-        font-weight: bold;
-    }
+        .control-group label {
+            font-size: 16px;
+            color: #f0f0f0;
+            font-weight: bold;
+        }
 
-    .control-group input[type="text"],
-    .control-group input[type="date"],
-    .control-group select {
-        padding: 10px;
-        width: 100%;
-        margin-bottom: 12px;
-        margin-top: 7px;
-        border-radius: 6px;
-        background-color: rgba(255, 255, 255, 0.9);
-        border: 1px solid #ddd;
-        color: #333;
-        box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.1);
-        transition: border-color 0.3s;
-    }
+        .control-group input[type="text"],
+        .control-group input[type="date"] {
+            padding: 10px;
+            width: 100%;
+            margin-bottom: 12px;
+            margin-top: 7px;
+            border-radius: 6px;
+            background-color: rgba(255, 255, 255, 0.9);
+            border: 1px solid #ddd;
+            color: #333;
+            box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.1);
+            transition: border-color 0.3s;
+        }
 
-    .control-group select {
-        padding: 10px;
-        height: 45px;
-    }
+        .control-group input:focus {
+            border-color: #3498db;
+            box-shadow: 0 0 8px rgba(52, 152, 219, 0.5);
+        }
 
-    .control-group input:focus,
-    .control-group select:focus {
-        border-color: #3498db;
-        box-shadow: 0 0 8px rgba(52, 152, 219, 0.5);
-    }
+        .control-group {
+            margin-bottom: 20px;
+        }
 
-    .control-group {
-        margin-bottom: 20px;
-    }
+        button {
+            background-color: #3498db;
+            color: white;
+            border: none;
+            padding: 12px 20px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 16px;
+            transition: background-color 0.3s ease, transform 0.2s;
+            width: 100%;
+        }
 
-    button {
-        background-color: #3498db;
-        color: white;
-        border: none;
-        padding: 12px 20px;
-        border-radius: 6px;
-        cursor: pointer;
-        font-size: 16px;
-        transition: background-color 0.3s ease, transform 0.2s;
-        width: 100%;
-    }
+        button:hover {
+            background-color: #2980b9;
+            transform: scale(1.05);
+        }
 
-    button:hover {
-        background-color: #2980b9;
-        transform: scale(1.05);
-    }
+        .btn-submit {
+            margin-top: 20px;
+            text-align: center;
+            display: block;
+        }
 
-    .btn-submit {
-        margin-top: 20px;
-        text-align: center;
-        display: block;
-    }
+        /* Modal Styling */
+        .modal {
+            display: none;
+            position: fixed;
+            z-index: 9999;
+            left: 0;
+            top: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.6);
+            align-items: center;
+            justify-content: center;
+        }
 
-    /* Modal Styling */
-    .modal {
-        display: none;
-        position: fixed;
-        z-index: 9999;
-        left: 0;
-        top: 0;
-        width: 100%;
-        height: 100%;
-        background: rgba(0, 0, 0, 0.6);
-        align-items: center;
-        justify-content: center;
-    }
+        .modal-content {
+            background-color: #fefefe;
+            padding: 20px;
+            border-radius: 10px;
+            width: 90%;
+            max-width: 400px;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
+            text-align: center;
+        }
 
-    .modal-content {
-        background-color: #fefefe;
-        padding: 20px;
-        border-radius: 10px;
-        width: 90%;
-        max-width: 400px;
-        box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
-        text-align: center;
-    }
+        .modal-header {
+            font-size: 24px;
+            margin-bottom: 15px;
+        }
 
-    .modal-header {
-        font-size: 24px;
-        margin-bottom: 15px;
-    }
+        .modal-buttons {
+            display: flex;
+            justify-content: center;
+            margin-top: 20px;
+        }
 
-    .modal-buttons {
-        display: flex;
-        justify-content: center;
-        margin-top: 20px;
-    }
+        .modal-buttons button {
+            padding: 10px 15px;
+        }
 
-    .modal-buttons button {
-        padding: 10px 15px;
-    }
+        /* Department Selection Modal */
+        .department-selection-modal {
+            display: none;
+            position: fixed;
+            z-index: 9999;
+            left: 0;
+            top: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.6);
+            align-items: center;
+            justify-content: center;
+        }
+
+        .department-selection-content {
+            background-color: #fefefe;
+            padding: 30px;
+            border-radius: 15px;
+            width: 90%;
+            max-width: 500px;
+            box-shadow: 0 6px 25px rgba(0, 0, 0, 0.4);
+            text-align: center;
+        }
+
+        .department-selection-header {
+            font-size: 24px;
+            margin-bottom: 20px;
+            color: #333;
+            font-weight: bold;
+        }
+
+        #departmentCheckboxes {
+            text-align: center;
+        }
+
+        #departmentCheckboxes label {
+            display: inline-block;
+            margin: 5px;
+            font-size: 16px;
+            color: #333;
+            font-weight: normal;
+            cursor: pointer;
+        }
+
+        .department-selection-buttons {
+            display: flex;
+            justify-content: center;
+            gap: 10px;
+            margin-top: 20px;
+        }
+
+        .department-selection-buttons button {
+            padding: 10px 20px;
+            background-color: #3498db;
+            border: none;
+            color: white;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 16px;
+            transition: background-color 0.3s ease;
+        }
+
+        .department-selection-buttons button:hover {
+            background-color: #2980b9;
+        }
 
     </style>
 </head>
@@ -149,13 +208,17 @@
             </div>
 
             <div class="control-group">
-                <label for="department-name">Department Name</label>
-                <select id="department-name" name="department_name" required>
-                    <option value="all">All Departments</option>
-                    <% departments.forEach(department => { %>
-                        <option value="<%= department.department_name %>"><%= department.department_name %></option>
-                    <% }) %>
-                </select>
+                <label>Department Name</label>
+                <div>
+                    <label>
+                        <input type="radio" name="departmentOption" value="all" checked>
+                        All Departments
+                    </label>
+                    <label>
+                        <input type="radio" name="departmentOption" value="choose" id="chooseDepartment">
+                        Choose Departments
+                    </label>
+                </div>
             </div>
 
             <div class="control-group">
@@ -183,66 +246,101 @@
         </div>
     </div>
 
-    <script>
-        document.getElementById('appraisal-form').addEventListener('submit', async function(event) {
-            event.preventDefault();
+    <!-- Department Selection Modal -->
+    <div id="departmentModal" class="department-selection-modal">
+        <div class="department-selection-content">
+            <div class="department-selection-header">Select Departments</div>
+            <div id="departmentCheckboxes">
+                <% departments.forEach(department => { %>
+                    <label>
+                        <input type="checkbox" class="department-checkbox" value="<%= department.department_name %>">
+                        <%= department.department_name %>
+                    </label>
+                <% }) %>
+            </div>
+            <div class="department-selection-buttons">
+                <button id="saveDepartmentsButton">Save</button>
+                <button id="closeDepartmentModalButton">Cancel</button>
+            </div>
+        </div>
+    </div>
 
+    <script>
+        // Show/Hide department selection modal based on radio button selection
+        const departmentOptions = document.getElementsByName('departmentOption');
+        const departmentModal = document.getElementById('departmentModal');
+    
+        departmentOptions.forEach(option => {
+            option.addEventListener('change', function() {
+                if (this.value === 'choose') {
+                    departmentModal.style.display = 'flex'; // Show department selection modal
+                } else {
+                    departmentModal.style.display = 'none'; // Hide department selection modal
+                }
+            });
+        });
+    
+        // Form submission with department selection handling
+        document.getElementById('appraisal-form').addEventListener('submit', function(e) {
+            e.preventDefault();
             const cycleName = document.getElementById('cycle-name').value;
-            const departmentName = document.getElementById('department-name').value;
             const startDate = document.getElementById('start-date').value;
             const endDate = document.getElementById('end-date').value;
-            
-            const messageModal = document.getElementById('messageModal');
-            const modalMessage = document.getElementById('modalMessage');
-            const closeModalButton = document.getElementById('closeModalButton');
+            let selectedDepartments = [];
+            const departmentOption = document.querySelector('input[name="departmentOption"]:checked').value;
 
-            // Function to show the modal with a message
-            function showModal(message) {
-                modalMessage.textContent = message;
-                messageModal.style.display = 'flex'; // Show modal
-            }
-
-            // Close modal when clicking OK button
-            closeModalButton.addEventListener('click', () => {
-                messageModal.style.display = 'none';
-                // Optionally redirect after success
-            });
-
-            try {
-                const response = await fetch('/principal/appraisal/create', {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                    },
-                    body: JSON.stringify({
-                        cycle_name: cycleName,
-                        department_name: departmentName,
-                        start_date: startDate,
-                        end_date: endDate
-                    }),
+            if (departmentOption === 'choose') {
+                const checkboxes = document.querySelectorAll('.department-checkbox:checked');
+                checkboxes.forEach(checkbox => {
+                    selectedDepartments.push(checkbox.value);
                 });
-
-                const data = await response.json();
-                if (data.success) {
-                    showModal('Appraisal cycle created successfully!');
-                    document.getElementById('appraisal-form').reset();
-                    setTimeout(() => {
-                        window.location.href = `/principal/criteriaSelection/${data.appraisalId}`;
-                    }, 1500); // Optionally redirect after 1.5 seconds
-                } else {
-                    showModal('Failed to create appraisal cycle.');
-                }
-            } catch (error) {
-                showModal('An error occurred. Please try again.');
             }
+
+            const data = {
+                cycle_name: cycleName,
+                start_date: startDate,
+                end_date: endDate,
+                department_name: departmentOption === 'choose' ? selectedDepartments : 'all'
+            };
+
+            fetch('/principal/appraisal/create', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify(data),
+            })
+            .then(response => response.json())
+            .then(data => {
+                const messageModal = document.getElementById('messageModal');
+                const modalMessage = document.getElementById('modalMessage');
+                modalMessage.innerText = data.message || 'Success!';
+                messageModal.style.display = 'flex';
+                setTimeout(() => {
+                        window.location.href = `/principal/criteriaSelection/${data.appraisalId}`;
+                    }, 1500);
+            })
+            .catch((error) => {
+                console.error('Error:', error);
+                const messageModal = document.getElementById('messageModal');
+                const modalMessage = document.getElementById('modalMessage');
+                modalMessage.innerText = 'An error occurred. Please try again.';
+                messageModal.style.display = 'flex';
+            });
         });
 
-        // Close modal when clicking outside of it
-        window.onclick = function(event) {
-            if (event.target === messageModal) {
-                messageModal.style.display = 'none';
-            }
-        };
+        // Close modal button functionality
+        document.getElementById('closeModalButton').addEventListener('click', function() {
+            document.getElementById('messageModal').style.display = 'none';
+        });
+
+        document.getElementById('closeDepartmentModalButton').addEventListener('click', function() {
+            document.getElementById('departmentModal').style.display = 'none';
+        });
+
+        document.getElementById('saveDepartmentsButton').addEventListener('click', function() {
+            document.getElementById('departmentModal').style.display = 'none';
+        });
     </script>
 </body>
 </html>

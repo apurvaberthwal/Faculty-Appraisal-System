@@ -6,7 +6,7 @@ import jwt from 'jsonwebtoken';
 import multer from 'multer';
 import path from 'path';
 import facultyDb from '../faculty.db.js';
-import { transporter } from '../service.js';
+import { getCriteriaAppliedPercentage, transporter } from '../service.js';
 
 const router = express.Router();
 const storage = multer.diskStorage({
@@ -407,11 +407,10 @@ router.post('/reset-password', async (req, res) => {
     }
 });
 
-router.get('/criteria-status/:apprisal_id', async (req, res) => {
-    const apprisal_id=req.params.apprisal_id;
-    console.log(apprisal_id);
-    console.log("criteria-status");
+router.get('/criteria-status/:appraisal_id', async (req, res) => {
+    const appraisal_id = req.params.appraisal_id;
     const successMsg = req.query.successMsg || "";
+
     try {
         // Get user type ID from the request
         const userTypeId = req.user.user_id;
@@ -422,49 +421,104 @@ router.get('/criteria-status/:apprisal_id', async (req, res) => {
         // Query to get the user ID based on the user type ID
         const sql = `SELECT user_id FROM user_master WHERE user_type_id = ?`;
         const result = await facultyDb.query(sql, [userTypeId]);
-        console.log('User Query Result:', result);
 
         if (result.length === 0) {
             return res.status(404).send('User not found');
         }
 
         const userId = result[0][0].user_id;
-        console.log('User ID:', userId);
 
-        // SQL query to get criteria status and actions without checking self_appraisal_score status
+        // Updated query to include criteria along with their statuses
         const query2 = `
-            SELECT
-                c.criteria_id AS 'Criteria Number',
-                c.criteria_description AS 'Criteria Name',
-                CASE
-                    WHEN MAX(sas.record_id) IS NOT NULL THEN 'Applied'
-                    ELSE 'Not Applied'
-                END AS 'Self-Appraisal Status',
-                CASE
-                    WHEN MAX(cm.record_id) IS NOT NULL THEN 'Reviewed'
-                    ELSE 'Not Reviewed'
-                END AS 'Committee Status'
-            FROM criteria_master c
-            LEFT JOIN c_parameter_master p
-                ON c.criteria_id = p.criteria_id
-            LEFT JOIN self_appraisal_score_master sas
-                ON p.c_parameter_id = sas.c_parameter_id AND sas.user_id = ?
-            LEFT JOIN committee_master cm
-                ON p.c_parameter_id = cm.c_parameter_id AND cm.user_id_employee = ? AND cm.status = 'active'
-            WHERE c.status = 'active'
-            GROUP BY c.criteria_id, c.criteria_description;
+        SELECT 
+            c.criteria_id AS 'Criteria Number',
+            c.criteria_description AS 'Criteria Name',
+            CASE
+                WHEN MAX(sas.record_id) IS NOT NULL THEN 'Applied'
+                ELSE 'Not Applied'
+            END AS 'Self-Appraisal Status',
+            CASE
+                WHEN MAX(cm.record_id) IS NOT NULL THEN 'Reviewed'
+                ELSE 'Not Reviewed'
+            END AS 'Committee Status'
+        FROM criteria_master c
+        LEFT JOIN apprisal_criteria_parameter_master acp
+            ON c.criteria_id = acp.criteria_id
+        LEFT JOIN self_appraisal_score_master sas
+            ON acp.c_parameter_id = sas.c_parameter_id AND sas.user_id = ?
+        LEFT JOIN committee_master cm
+            ON acp.c_parameter_id = cm.c_parameter_id AND cm.user_id_employee = ? AND cm.status = 'active'
+        LEFT JOIN appraisal_master am
+            ON acp.appraisal_id = am.appraisal_id
+        WHERE c.status = 'active'
+          AND am.status = 'active'
+          AND am.appraisal_id = ?
+        GROUP BY c.criteria_id, c.criteria_description;
         `;
 
         // Execute the query with the user ID
-        const results2 = await facultyDb.query(query2, [userId, userId]);
-        console.log('Criteria Results:', results2[0]);
+        const criteriaResults = await facultyDb.query(query2, [userId, userId, appraisal_id]);
 
-        if (results2.length === 0) {
+        // Log criteria results for debugging
+        console.log('Criteria Results:', criteriaResults);
+
+        // Handle case when no criteria are found
+        if (criteriaResults.length === 0) {
             console.log('No criteria data found');
+            // Optionally set an empty array or a default message
+            criteriaResults.push({ 'Criteria Number': 'N/A', 'Criteria Name': 'No criteria available', 'Self-Appraisal Status': '', 'Committee Status': '' });
         }
 
-        // Render the results in the view
-        res.render('./Faculty/criteria-status', { userId, data: results2[0], successMsg });
+        // Query to get total marks and self-obtained grade
+        const queryTotalMarks = `
+        SELECT 
+        COALESCE(total_marks.TotalMarks, 0) AS 'Total Marks',
+        MAX(gm.grade_title) AS 'Self Obtained Grade'  -- Use MAX or MIN to select a single grade title
+    FROM (
+        SELECT 
+            SUM(sas.marks_by_emp) AS TotalMarks
+        FROM criteria_master c
+        LEFT JOIN apprisal_criteria_parameter_master acp
+            ON c.criteria_id = acp.criteria_id
+        LEFT JOIN self_appraisal_score_master sas
+            ON acp.c_parameter_id = sas.c_parameter_id AND sas.user_id = ?
+        LEFT JOIN appraisal_master am
+            ON acp.appraisal_id = am.appraisal_id
+        WHERE c.status = 'active'
+          AND am.status = 'active'
+          AND am.appraisal_id = ?
+    ) AS total_marks
+    LEFT JOIN grade_master gm
+        ON total_marks.TotalMarks BETWEEN CAST(gm.min_marks AS UNSIGNED) AND CAST(gm.max_marks AS UNSIGNED)
+    GROUP BY total_marks.TotalMarks;
+    
+        `;
+
+        // Execute the query to get total marks and self-obtained grade
+        // Execute the query to get total marks and self-obtained grade
+const totalMarksResults = await facultyDb.query(queryTotalMarks, [userId, appraisal_id]);
+console.log('Total Marks Results:', totalMarksResults); // Log entire result set for inspection
+
+
+    // Access the first element of the results array and the first object within it
+    const totalMarks = totalMarksResults[0][0]['Total Marks'] || 0; // Access the first object in the first array
+    const selfObtainedGrade = totalMarksResults[0][0]['Self Obtained Grade'] || 'N/A'; // Access the first object in the first array
+
+    // Log the individual results
+    console.log('Total Marks:', totalMarks);
+    console.log('Self Obtained Grade:', selfObtainedGrade);
+
+
+
+// Render the results in the view
+        res.render('./Faculty/criteria-status', {
+            userId,
+            data: criteriaResults,
+            totalMarks,
+            selfObtainedGrade,
+            successMsg,
+            appraisalId: appraisal_id
+        });
 
     } catch (err) {
         console.error(err);
@@ -474,11 +528,11 @@ router.get('/criteria-status/:apprisal_id', async (req, res) => {
 
 
 router.get("/appraisalnum", async (req, res) => {
-    console.log(req.user.user_id)
+    console.log(req.user);
     try {
         // Fetch the institution ID and department ID for the current user
         const [userDetails] = await facultyDb.query('SELECT institution_id, dept_id FROM user_master WHERE user_type_id = ?', [req.user.user_id]);
-        
+
         // Extract institution and department from the result
         const institute = userDetails[0].institution_id;
         const department_id = userDetails[0].dept_id;
@@ -497,13 +551,24 @@ router.get("/appraisalnum", async (req, res) => {
         `, [institute, department_id]);
 
         // Fetch user name (first, middle, last)
-        const [user_name] = await facultyDb.query('SELECT first_name, middle_name, last_name FROM user_master WHERE user_type_id = ?', [req.user.user_id]);
-        
+        const [user_name] = await facultyDb.query('SELECT first_name, middle_name, last_name, user_id FROM user_master WHERE user_type_id = ?', [req.user.user_id]);
+        const userId = user_name[0].user_id;
+
         // Combine the name parts into a single full name
         const name = user_name[0] ? `${user_name[0].first_name} ${user_name[0].middle_name || ''} ${user_name[0].last_name}`.trim() : 'User';
 
+        // Map through the results to add criteria applied percentage
+        const resultsWithPercentage = await Promise.all(results.map(async (appraisal) => {
+            const percentageData = await getCriteriaAppliedPercentage(userId, appraisal.appraisal_id); // Assuming appraisal_id is in the results
+            
+            return {
+                ...appraisal,
+                criteriaAppliedPercentage: percentageData.percentage, // Add the percentage to each appraisal object
+            };
+        }));
+
         // Render the dashboard with the appraisal data and user's name
-        res.render('./Faculty/dashboard3', { data: results, user_name: name });
+        res.render('./Faculty/dashboard3', { data: resultsWithPercentage, user_name: name });
     } catch (error) {
         console.error('Error fetching appraisal number:', error);
         res.status(500).send('Internal Server Error');
@@ -512,13 +577,13 @@ router.get("/appraisalnum", async (req, res) => {
 
 
 
-router.post("/apply", upload.any(), async (req, res) => {
+router.post("/apply/:appraisalId/:criteriaId", upload.any(), async (req, res) => {
     if (!req.user) {
         return res.status(401).send('Access denied. No token provided.');
     }
-
+    const { criteriaId, appraisalId } = req.params;
     const userTypeId = req.user.user_id;
-    const criteriaId = req.body.criteriaId;
+    console.log('Processing request for criteria ' + criteriaId + ' and appraisal ' + appraisalId);
 
     try {
         // Fetch user ID based on userTypeId
@@ -539,14 +604,14 @@ router.post("/apply", upload.any(), async (req, res) => {
                 const marks = parseInt(req.body[param], 10);
                 const noProof = req.body[`no_proof_${paramId}`] ? 'no proof' : 'proof'; // Check if 'no proof' is checked
                 if (!isNaN(marks)) {
-                    marksData.push([userId, marks, paramId, 'inactive', noProof]);
+                    marksData.push([userId, marks, paramId, 'inactive', noProof,appraisalId]);
                 }
             }
         }
 
         // Insert self-approved marks one by one
         for (const mark of marksData) {
-            await facultyDb.query('INSERT INTO self_appraisal_score_master (user_id, marks_by_emp, c_parameter_id, status, supportive_document) VALUES (?, ?, ?, ?, ?)', mark);
+            await facultyDb.query('INSERT INTO self_appraisal_score_master (user_id, marks_by_emp, c_parameter_id, status, supportive_document,appraisal_id) VALUES (?, ?, ?, ?, ?,?)', mark);
         }
 
         // Prepare data for document_master
@@ -575,7 +640,7 @@ router.post("/apply", upload.any(), async (req, res) => {
         }
 
         const successMsg = 'Documents and marks uploaded successfully';
-        res.redirect(`/faculty/criteria-status?successMsg=${successMsg}`);
+        res.redirect(`/faculty/criteria-status/${appraisalId}?successMsg=${successMsg}`);
     } catch (error) {
         console.error('Error processing request:', error);
         res.status(500).send('Internal Server Error');
@@ -583,24 +648,49 @@ router.post("/apply", upload.any(), async (req, res) => {
 });
 
 
-router.get('/apply', async (req, res) => {
-    const { criteriaId } = req.query;
+// Route to fetch active parameters for a specific criteria and appraisal
+router.get('/apply/:appraisalId/:criteriaId', async (req, res) => {
+    const { criteriaId, appraisalId } = req.params;
+    console.log('Fetching active parameters for criteria ' + criteriaId + ' and appraisal ' + appraisalId);
+   console.log(req.params)
+   
+    if (!criteriaId || !appraisalId) {
+        return res.status(400).send('Missing required parameters: criteriaId or appraisalId');
+    }
 
     try {
-        // Fetch criteria details
+        // Query to fetch active parameters for a given criteria and appraisal
         const criteriaQuery = `
-            SELECT c.criteria_description AS 'Criteria Name', cp.*
+            SELECT c.criteria_description AS 'CriteriaName', cp.*
             FROM criteria_master c
-            JOIN c_parameter_master cp ON c.criteria_id = cp.criteria_id
+            JOIN c_parameter_master cp 
+              ON c.criteria_id = cp.criteria_id
+            JOIN apprisal_criteria_parameter_master acp
+              ON cp.c_parameter_id = acp.c_parameter_id
             WHERE c.criteria_id = ?
+              AND acp.appraisal_id = ?
+              AND cp.status = 'active'
+              AND acp.status = 'active'
         `;
-        const parameters = await facultyDb.query(criteriaQuery, [criteriaId]);
-        const CriteriaName = parameters[0][0]['Criteria Name'];        console.log(CriteriaName);
-        // Render EJS template
-        res.render('faculty/apply', { parameters: parameters[0], criteriaId,CriteriaName });
-    } catch (err) {
-        console.error(err);
-        res.status(500).send('Server error');
+
+        // Fetch the parameters from the database
+        const [parameters] = await facultyDb.query(criteriaQuery, [criteriaId, appraisalId]);
+
+        if (parameters.length === 0) {
+            return res.status(404).send('No active parameters found for the specified criteria and appraisal');
+        }
+
+        const criteriaName = parameters[0]['CriteriaName'];
+        
+        // Render the page with the fetched parameters
+        res.render('faculty/apply', { parameters, criteriaId, criteriaName,appraisalId });
+    } catch (error) {
+        console.error('Error fetching parameters:', error);
+
+        // Log the error for monitoring and notify developers if needed
+        // e.g., use a logging service like Winston or Sentry here
+
+        return res.status(500).send('An internal server error occurred. Please try again later.');
     }
 });
 

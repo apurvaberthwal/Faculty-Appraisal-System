@@ -103,8 +103,8 @@
 <body>
     <div class="main">
     <div class="container">
-        <h1><%= CriteriaName ? CriteriaName : 'No Criteria' %></h1>
-        <form action="/faculty/apply" method="post" enctype="multipart/form-data" onsubmit="return validateForm()">
+        <h1><%= criteriaName ? criteriaName : 'No Criteria' %></h1>
+        <form action="/faculty/apply/<%= appraisalId %>/<%= criteriaId %>" method="post" enctype="multipart/form-data" onsubmit="return validateForm()">
             <input type="hidden" name="criteriaId" value="<%= criteriaId %>">
             <table>
                 <thead>

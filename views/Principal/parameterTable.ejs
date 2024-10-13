@@ -137,7 +137,23 @@
                             <% }) %>
                         </tbody>
                     </table>
+                    <!-- Button to show Add Parameter Form -->
+                    <button type="button" class="button" onclick="toggleAddParameterForm('<%= criterion.criteria_id %>')">Add Parameter</button>
+                    
+                    <!-- Add Parameter Form -->
+                    <div class="add-parameter-form" id="addParameterForm_<%= criterion.criteria_id %>">
+                        <div class="form-field">
+                            <label for="description_<%= criterion.criteria_id %>">Description:</label>
+                            <input type="text" id="description_<%= criterion.criteria_id %>" name="description">
+                        </div>
+                        <div class="form-field">
+                            <label for="marks_<%= criterion.criteria_id %>">Marks:</label>
+                            <input type="number" id="marks_<%= criterion.criteria_id %>" name="marks">
+                        </div>
+                        <button type="button" class="button" onclick="submitParameter('<%= criterion.criteria_id %>')">Submit Parameter</button>
+                    </div>
                 </div>
+              
             <% }) %>
 
             <div class="navigation">
@@ -157,6 +173,69 @@
     </div>
 
     <script>
+
+
+
+function toggleAddParameterForm(criteriaId) {
+            const form = document.getElementById(`addParameterForm_${criteriaId}`);
+            if (form.style.display === 'none' || !form.style.display) {
+                form.style.display = 'block';
+            } else {
+                form.style.display = 'none';
+            }
+        }
+
+        function submitParameter(criteriaId) {
+    const description = document.getElementById(`description_${criteriaId}`).value;
+    const marks = document.getElementById(`marks_${criteriaId}`).value;
+
+    // Basic validation
+    if (!description || !marks) {
+        alert('Please enter both description and marks.');
+        return;
+    }
+
+    // Send AJAX request to add new parameter
+    fetch('/principal/addParameter', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+            criteriaId: criteriaId,
+            description: description,
+            marks: marks
+        })
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.message) {
+            alert(data.message);
+            // Append the new parameter to the table
+            const table = document.querySelector(`.step[data-criteria-id="${criteriaId}"] table tbody`);
+            const row = document.createElement('tr');
+            row.innerHTML = `
+                <td>${description}</td>
+                <td>${marks}</td>
+                <td>
+                    <input type="checkbox" value="${data.newParameterId}" data-marks="${marks}">
+                </td>
+            `;
+            table.appendChild(row);
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        alert('An error occurred while adding the parameter.');
+    });
+}
+
+
+
+
+
+
+
         const steps = document.querySelectorAll('.step');
         let currentStep = 0;
         const appraisal_id = "<%= appraisalId %>";

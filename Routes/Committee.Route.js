@@ -108,62 +108,53 @@ router.get("/home", async (req, res) => {
 
 router.use(authorizeRole('committee'));
 
-router.get("/reports", async (req, res) => {
+router.get("/reports/:appraisal_id", async (req, res) => {
     const institution_id = req.user.institution_id;
+    const appraisal_id = req.params.appraisal_id; // Get appraisal_id from URL parameter
     console.log("institution_id", institution_id);
+    console.log("appraisal_id", appraisal_id);
 
     try {
         const query = `
-            SELECT
-                u.user_id,
-                u.email_id,
-                u.emp_id,
-                CONCAT(u.first_name, ' ', u.last_name) AS name,
-                d.department_name,
-                COUNT(DISTINCT cp.criteria_id) AS criteria_applied,
-                total_criteria.total AS total_criteria,
-                CASE
-                    WHEN COUNT(DISTINCT cp.criteria_id) = total_criteria.total THEN 'Fully filled'
-                    WHEN COUNT(DISTINCT cp.criteria_id) > 0 THEN 'Partially filled'
-                    ELSE 'Not filled'
-                END AS appraisal_status,
-                CASE
-                    WHEN COUNT(DISTINCT cm.criteria_id) = total_criteria.total THEN 'Fully Reviewed'
-                    WHEN COUNT(DISTINCT cm.criteria_id) > 0 THEN 'Partially Reviewed'
-                    ELSE 'Not Reviewed'
-                END AS committee_status
-            FROM
-                user_master u
-                JOIN department_master d ON u.dept_id = d.dept_id
-                LEFT JOIN self_appraisal_score_master sasm ON u.user_id = sasm.user_id AND sasm.status = 'active'
-                LEFT JOIN c_parameter_master cp ON sasm.c_parameter_id = cp.c_parameter_id
-                LEFT JOIN criteria_master c ON cp.criteria_id = c.criteria_id
-                LEFT JOIN (
-                    SELECT
-                        cm.user_id_employee,
-                        cp.criteria_id
-                    FROM committee_master cm
-                    JOIN c_parameter_master cp ON cm.c_parameter_id = cp.c_parameter_id
-                    WHERE cm.status = 'active'
-                    GROUP BY cm.user_id_employee, cp.criteria_id
-                ) cm ON cm.criteria_id = cp.criteria_id AND cm.user_id_employee = u.user_id
-                JOIN user_type_master utm ON u.user_type_id = utm.user_type_id AND utm.user_type_type = 'employee'
-                CROSS JOIN (
-                    SELECT COUNT(DISTINCT c.criteria_id) AS total
-                    FROM criteria_master c
-                    WHERE c.status = 'active'
-                ) total_criteria
-            WHERE
-                u.institution_id = ?
-                AND EXISTS (
-                    SELECT 1 FROM self_appraisal_score_master sa 
-                    WHERE sa.user_id = u.user_id AND sa.status = 'active'
-                )
-            GROUP BY
-                u.user_id, u.emp_id, u.first_name, u.last_name, d.department_name, total_criteria.total, u.email_id
-        `;
-        
-        const [rows] = await facultyDb.query(query, [institution_id]);
+        SELECT
+    u.user_id,
+    u.email_id,
+    u.emp_id,
+    CONCAT(u.first_name, ' ', u.last_name) AS name,
+    d.department_name,
+    COUNT(DISTINCT cp.criteria_id) AS criteria_applied,
+    total_criteria.total AS total_criteria,
+    CASE
+        WHEN COUNT(DISTINCT cp.criteria_id) = total_criteria.total THEN 'Fully filled'
+        WHEN COUNT(DISTINCT cp.criteria_id) > 0 THEN 'Partially filled'
+        ELSE 'Not filled'
+    END AS appraisal_status
+FROM
+    user_master u
+JOIN department_master d ON u.dept_id = d.dept_id
+LEFT JOIN self_appraisal_score_master sasm ON u.user_id = sasm.user_id
+    AND sasm.status = 'active' AND sasm.appraisal_id = ? -- Placeholder for appraisal_id
+LEFT JOIN c_parameter_master cp ON sasm.c_parameter_id = cp.c_parameter_id
+LEFT JOIN (
+    SELECT
+        appraisal_id,
+        COUNT(DISTINCT criteria_id) AS total
+    FROM
+        apprisal_criteria_parameter_master 
+    WHERE
+        appraisal_id = ? 
+    GROUP BY
+        appraisal_id
+) total_criteria ON sasm.appraisal_id = total_criteria.appraisal_id
+WHERE
+    u.institution_id = ? 
+GROUP BY
+    u.user_id, u.emp_id, u.first_name, u.last_name, d.department_name, u.email_id, total_criteria.total;
+
+    `;
+    
+    const [rows] = await facultyDb.query(query, [appraisal_id, appraisal_id,institution_id]);
+    // Pass appraisal_id as parameter
         if (rows.length === 0) {
             res.render("./Committee/report", { employees: [], error: "No data found." });
             return;

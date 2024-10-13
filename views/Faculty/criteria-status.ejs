@@ -158,6 +158,11 @@
 <body>
 
     <div class="alert alert-success"></div>
+    <div class="summary">
+        <h3>Summary for Appraisal ID: <%= appraisalId %></h3>
+        <p><strong>Total Marks:</strong> <%= totalMarks %></p>
+        <p><strong>Self Obtained Grade:</strong> <%= selfObtainedGrade %></p>
+    </div>
     
     <div class="container-main">
         <div class="container">
@@ -174,31 +179,32 @@
                     </tr>
                 </thead>
                 <tbody>
-                    <% if (data && data.length === 0) { %>
+                    <% if (data && data[0].length === 0) { %>
                         <tr>
                             <td colspan="4">No criteria available</td>
                         </tr>
                     <% } else { %>
-                        <% data.forEach(row => { %>
+                        <% data[0].forEach(row => { %>  <!-- Access the first inner array -->
                             <tr>
                                 <td><%= row['Criteria Number'] %></td>
                                 <td><%= row['Criteria Name'] %></td>
                                 <td><%= row['Self-Appraisal Status'] %></td>
                                 <td>
                                     <% if (row['Self-Appraisal Status'] === 'Not Applied') { %>
-                                        <button class="btn btn-view" onclick="handleAction('<%= row['Criteria Number'] %>', 'apply')">Apply</button>
+                                        <button class="btn btn-view" onclick="handleAction('<%= appraisalId %>', '<%= row['Criteria Number'] %>', 'apply')">Apply</button>
                                     <% } else if (row['Self-Appraisal Status'] === 'Applied') { %>
                                         <% if (row['Committee Status'] === 'Reviewed') { %>
-                                            <button class="btn btn-view" onclick="handleAction('<%= row['Criteria Number'] %>', 'view')">View</button>
+                                            <button class="btn btn-view" onclick="handleAction('<%= appraisalId %>', '<%= row['Criteria Number'] %>', 'view')">View</button>
                                         <% } else { %>
-                                            <button class="btn btn-view" onclick="handleAction('<%= row['Criteria Number'] %>', 'view')">View</button>
-                                            <button class="btn btn-edit" onclick="handleAction('<%= row['Criteria Number'] %>', 'edit')">Edit</button>
+                                            <button class="btn btn-view" onclick="handleAction('<%= appraisalId %>', '<%= row['Criteria Number'] %>', 'view')">View</button>
+                                            <button class="btn btn-edit" onclick="handleAction('<%= appraisalId %>', '<%= row['Criteria Number'] %>', 'edit')">Edit</button>
                                         <% } %>
                                     <% } %>
                                 </td>
                             </tr>
                         <% }) %>
                     <% } %>
+                    
                 </tbody>
             </table>
 
@@ -288,15 +294,15 @@
             }
         }
 
-        function handleAction(criteriaId, action) {
-            if (action === 'apply') {
-                window.location.href = `/faculty/apply?criteriaId=${criteriaId}`;
-            } else if (action === 'view') {
-                window.location.href = `/faculty/view?criteriaId=${criteriaId}`;
-            } else if (action === 'edit') {
-                window.location.href = `/faculty/edit?criteriaId=${criteriaId}`;
-            }
-        }
+        function handleAction(appraisalId, criteriaId, action) {
+    if (action === 'apply') {
+        window.location.href = `/faculty/apply/${appraisalId}/${criteriaId}`;
+    } else if (action === 'view') {
+        window.location.href = `/faculty/view/${criteriaId}`;
+    } else if (action === 'edit') {
+        window.location.href = `/faculty/edit/${criteriaId}`;
+    }
+}
 
         function closeModal() {
             document.getElementById('warningModal').style.display = 'none';

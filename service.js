@@ -287,3 +287,42 @@ export async function getCriteriaWithParameters(selectedCriteriaIds) {
   console.log("Criteria object before return:", criteria); // Log the processed criteria
   return Object.values(criteria);
 }
+export async function getCriteriaAppliedPercentage(userId, appraisalId) {
+    try {
+        const [result] = await facultyDb.query(`
+            SELECT
+                total_criteria.total AS total_criteria,
+                COUNT(DISTINCT cp.criteria_id) AS criteria_applied
+            FROM
+                self_appraisal_score_master sasm
+            LEFT JOIN
+                c_parameter_master cp ON sasm.c_parameter_id = cp.c_parameter_id
+            LEFT JOIN (
+                SELECT
+                    appraisal_id,
+                    COUNT(DISTINCT criteria_id) AS total
+                FROM
+                    apprisal_criteria_parameter_master
+                WHERE
+                    appraisal_id = ?
+                GROUP BY
+                    appraisal_id
+            ) total_criteria ON sasm.appraisal_id = total_criteria.appraisal_id
+            WHERE
+                sasm.user_id = ? AND sasm.appraisal_id = ? AND sasm.status = 'active'
+            GROUP BY
+                total_criteria.total;  -- Add GROUP BY here
+        `, [appraisalId, userId, appraisalId]);
+
+        const totalCriteria = result[0]?.total_criteria || 0;
+        const criteriaApplied = result[0]?.criteria_applied || 0;
+
+        // Calculate the percentage of criteria applied
+        const percentage = totalCriteria > 0 ? (criteriaApplied / totalCriteria) * 100 : 0;
+
+        return { percentage };
+    } catch (error) {
+        console.error('Error fetching criteria percentage:', error);
+        throw error; // Rethrow the error to handle it in the calling function
+    }
+}

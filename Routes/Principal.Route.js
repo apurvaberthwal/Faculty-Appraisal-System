@@ -1178,9 +1178,9 @@ router.post("/appraisal/create", async (req, res, next) => {
         const user_id = user_id_query[0].user_id;
 
         const [appraisalResult] = await facultyDb.query(
-            `INSERT INTO appraisal_master (appraisal_cycle_name, user_id, status,start_date,end_date)
-             VALUES (?, ?,'inactive', ?,?)`,
-            [cycle_name, user_id,start_date,end_date]
+            `INSERT INTO appraisal_master (appraisal_cycle_name, user_id, status, start_date, end_date)
+             VALUES (?, ?, 'inactive', ?, ?)`,
+            [cycle_name, user_id, start_date, end_date]
         );
 
         if (appraisalResult.affectedRows > 0) {
@@ -1194,36 +1194,33 @@ router.post("/appraisal/create", async (req, res, next) => {
                 );
 
                 for (const department of departments) {
-                    const [existingEntry] = await facultyDb.query(`
-                        SELECT * FROM appraisal_departments WHERE appraisal_id = ? AND department_id = ? AND institution_id = ?
-                    `, [appraisalId, department.dept_id, institutionId]);
-
-                    if (existingEntry.length === 0) {
-                        await insertIntoAppraisalDepartments(appraisalId, department.dept_id, institutionId);
-                    }
+                    await insertIntoAppraisalDepartments(appraisalId, department.dept_id, institutionId);
                 }
                 res.json({ success: true, appraisalId: appraisalId });
-               
-            } else {
+            } else if (Array.isArray(department_name) && department_name.length > 0) {
                 const [departmentResult] = await facultyDb.query(`
-                    SELECT dept_id FROM department_master WHERE department_name = ? AND institution_id = ?
-                `, [department_name, institutionId]);
+                    SELECT dept_id FROM department_master 
+                    WHERE department_name IN (?) AND institution_id = ?`,
+                    [department_name, institutionId]
+                );
 
                 if (departmentResult.length === 0) {
-                    return res.json({ success: false, message: 'Department not found' });
+                    return res.json({ success: false, message: 'Departments not found' });
                 }
 
-                const departmentId = departmentResult[0].dept_id;
-                await insertIntoAppraisalDepartments(appraisalId, departmentId, institutionId);
+                for (const department of departmentResult) {
+                    await insertIntoAppraisalDepartments(appraisalId, department.dept_id, institutionId);
+                }
 
                 res.json({ success: true, appraisalId: appraisalId });
             }
         }
     } catch (error) {
         console.error('Error creating appraisal cycle:', error);
-        next(error);  // Pass the error to the error handling middleware
+        next(error);
     }
 });
+
 
 router.get('/parameterReview', async (req, res) => {
     try {

@@ -1,4 +1,4 @@
-<%- include("nav")%>
+<%- include("nav") %>
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -6,7 +6,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Criteria Status</title>
     <style>
-         h1 {
+        h1 {
             color: white;
         }
 
@@ -15,11 +15,11 @@
             font-family: Arial, sans-serif;
             margin: 0;
             padding-top: 80px;
-            
             height: 100vh;
-            position: relative; /* To enable positioning of child elements */
+            position: relative;
         }
-        .container-main{
+
+        .container-main {
             display: flex;
             justify-content: center;
             margin-top: 15px;
@@ -96,17 +96,18 @@
             border-color: #d6e9c6;
             display: none; /* Initially hidden */
         }
+
         .btn-back {
-    background-color: #f44336; /* Red background color */
-    color: white;
-    padding: 6px 12px;
-    margin: 4px 2px;
-    border-radius: 4px;
-    text-align: center;
-    cursor: pointer;
-    border: none;
-    text-decoration: none;
-}
+            background-color: #f44336; /* Red background color */
+            color: white;
+            padding: 6px 12px;
+            margin: 4px 2px;
+            border-radius: 4px;
+            text-align: center;
+            cursor: pointer;
+            border: none;
+            text-decoration: none;
+        }
     </style>
 </head>
 <body>
@@ -115,48 +116,47 @@
         <div class="alert-success" style="display: block;"><%= successMsg %></div>
     <% } %>
     <button class="btn btn-back" onclick="history.back()">Back</button>
-<div class="container-main">
-    <div class="container">
-        <h1>Criteria Status</h1>
-        <p>User ID: <%= userId %></p>
+    <div class="container-main">
+        <div class="container">
+            <h1>Criteria Status</h1>
+            <p>User ID: <%= userId %></p>
 
-        <table id="criteriaTable">
-            <thead>
-                <tr>
-                    <th>Criteria Number</th>
-                    <th>Criteria Name</th>
-                    <th>Self-Appraisal Status</th>
-                    <th>Committee Status</th>
-                    <th>Action</th>
-                </tr>
-            </thead>
-            <tbody>
-                <% if (data && data.length === 0) { %>
+            <table id="criteriaTable">
+                <thead>
                     <tr>
-                        <td colspan="5">No criteria available</td>
+                        <th>Criteria Number</th>
+                        <th>Criteria Name</th>
+                        <th>Self-Appraisal Status</th>
+                        <th>Committee Status</th>
+                        <th>Action</th>
                     </tr>
-                <% } else { %>
-                    <% data.forEach(row => { %>
+                </thead>
+                <tbody>
+                    <% data[0].forEach(row => { %>
                         <tr>
                             <td><%= row['Criteria Number'] %></td>
                             <td><%= row['Criteria Name'] %></td>
                             <td><%= row['Self-Appraisal Status'] %></td>
                             <td><%= row['Committee Status'] %></td>
                             <td>
-                                <form class="form-container" action="/committee/criteria-Status/review" method="POST">
+                                <form class="form-container" action="/committee/criteria-Status/review/" method="POST">
                                     <input type="hidden" name="user_id" value="<%= userId %>">
                                     <input type="hidden" name="criteria_id" value="<%= row['Criteria Number'] %>">
+                                    <input type="hidden" name="appraisal_id" value="<%= appraisal_id %>">
                                     <button type="submit" class="btn btn-view">Review</button>
                                 </form>
                             </td>
                         </tr>
                     <% }) %>
-                <% } %>
-            </tbody>
-        </table>
-    </div>
-</div> 
+                    
+                </tbody>
+            </table>
+        </div>
+    </div> 
     <script>
+    
+    console.log(<%- JSON.stringify(data) %>);
+
         document.addEventListener("DOMContentLoaded", function() {
             const alertSuccess = document.querySelector('.alert-success');
             if (alertSuccess) {

@@ -1346,7 +1346,7 @@ router.post('/submitParameters', async (req, res) => {
     console.log("Test");
 
     const { parameters } = req.body; // Destructure parameters from request body
-
+    console.log(parameters)
     // Check if parameters are provided
     if (!parameters || parameters.length === 0) {
         return res.status(400).json({ message: 'No parameters provided.' });
@@ -1403,10 +1403,97 @@ router.post('/submitParameters', async (req, res) => {
 
 
 
+router.get("/appraisalReport", async (req, res) => {
+    const institute_id = req.user.institution_id;
+    try {
+        // Query to get all appraisal cycles for a specific institution
+        const [appraisals] = await facultyDb.query(`
+    SELECT DISTINCT 
+        am.appraisal_id, 
+        am.appraisal_cycle_name, 
+        am.start_date, 
+        am.end_date ,am.status
+    FROM appraisal_master am
+    JOIN appraisal_departments ad ON am.appraisal_id = ad.appraisal_id
+    WHERE ad.institution_id = ?
+`, [institute_id]);
+
+    
+    
+        // Check if no appraisal cycles are found for the given institution
+        if (appraisals.length === 0) {
+          return res.status(404).send('No appraisal cycles found for this institution.');
+        }
+    
+        // Render the appraisal table page and pass the appraisals data
+        res.render('./principal/appraisalReport', { appraisals });
+      } catch (error) {
+        console.error('Error fetching appraisal data:', error);
+        res.status(500).send('Internal Server Error');
+      }
+})
 
 
 
+router.get("/reports/:appraisal_id", async (req, res) => {
+    const institution_id = req.user.institution_id;
+    const appraisal_id = req.params.appraisal_id; // Get appraisal_id from URL parameter
+    console.log("institution_id", institution_id);
+    console.log("appraisal_id", appraisal_id);
 
+    try {
+        const query = `
+        SELECT
+    u.user_id,
+    u.email_id,
+    u.emp_id,
+    CONCAT(u.first_name, ' ', u.last_name) AS name,
+    d.department_name,
+    COUNT(DISTINCT cp.criteria_id) AS criteria_applied,
+    total_criteria.total AS total_criteria,
+    CASE
+        WHEN COUNT(DISTINCT cp.criteria_id) = total_criteria.total THEN 'Fully filled'
+        WHEN COUNT(DISTINCT cp.criteria_id) > 0 THEN 'Partially filled'
+        ELSE 'Not filled'
+    END AS appraisal_status
+FROM
+    user_master u
+JOIN department_master d ON u.dept_id = d.dept_id
+LEFT JOIN self_appraisal_score_master sasm ON u.user_id = sasm.user_id
+    AND sasm.status = 'active' AND sasm.appraisal_id = ? -- Placeholder for appraisal_id
+LEFT JOIN c_parameter_master cp ON sasm.c_parameter_id = cp.c_parameter_id
+LEFT JOIN (
+    SELECT
+        appraisal_id,
+        COUNT(DISTINCT criteria_id) AS total
+    FROM
+        apprisal_criteria_parameter_master 
+    WHERE
+        appraisal_id = ? 
+    GROUP BY
+        appraisal_id
+) total_criteria ON sasm.appraisal_id = total_criteria.appraisal_id
+WHERE
+    u.institution_id = ? 
+GROUP BY
+    u.user_id, u.emp_id, u.first_name, u.last_name, d.department_name, u.email_id, total_criteria.total;
+
+    `;
+    
+    const [rows] = await facultyDb.query(query, [appraisal_id, appraisal_id,institution_id]);
+    // Pass appraisal_id as parameter
+        if (rows.length === 0) {
+            res.render("./Committee/report", { employees: [], error: "No data found.",appraisal_id:appraisal_id });
+            return;
+        }
+        console.log(rows);
+
+        res.render("./principal/appraisal_Emplist", { employees: rows ,appraisal_id:appraisal_id});
+    } catch (err) {
+        console.error(err);
+        res.status(500).send("Server Error");
+    }
+});
 
 
 
@@ -1415,5 +1502,33 @@ router.post('/submitParameters', async (req, res) => {
 router.get('/logout', (req, res) => {
     res.clearCookie('token');
     res.redirect('/principal/login')});
+
+// Route to show detailed employee appraisal report
+router.get('/appraisal_emp_report/:employeeId', (req, res) => {
+    const employeeId = req.params.employeeId;
+    
+    // Fetch employee details and appraisal report data for the given employeeId
+   /* const employee = getEmployeeById(employeeId);  // Fetch the employee's basic info
+    const appraisalCycle = getAppraisalCycleByEmployeeId(employeeId);  // Get the appraisal cycle name
+    const appraisalCriteria = getAppraisalCriteriaByEmployeeId(employeeId);  // Fetch criteria, parameters, and marks */
+    const employee = "USR1"
+    const appraisalCycle = "Appraisal Cycle 1"
+    const appraisalCriteria = [
+        { criteria_name: 'Quality of Work', parameters: 'Accuracy, Timeliness', self_marks: 80, obtained_marks: 85 },
+        { criteria_name: 'Teamwork', parameters: 'Collaboration, Support', self_marks: 75, obtained_marks: 78 },
+        { criteria_name: 'Initiative', parameters: 'Problem Solving, Leadership', self_marks: 85, obtained_marks: 90 },
+    ];
+
+    res.render('./principal/appraisal_emp_report', {
+        employee: employee || { name: "Pratksha Mane" },  // Example name for the employee
+        appraisal_cycle_name: appraisalCycle.name || "Mid-Year 2024",
+        total_grade: appraisalCycle.total_grade || "A",
+        appraisalCriteria: appraisalCriteria || [
+            { criteria_name: 'Quality of Work', parameters: 'Accuracy, Timeliness', self_marks: 80, obtained_marks: 85 },
+            { criteria_name: 'Teamwork', parameters: 'Collaboration, Support', self_marks: 75, obtained_marks: 78 },
+            { criteria_name: 'Initiative', parameters: 'Problem Solving, Leadership', self_marks: 85, obtained_marks: 90 },
+        ]
+    });
+});
 
 export default router;

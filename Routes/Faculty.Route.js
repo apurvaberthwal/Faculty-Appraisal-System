@@ -427,37 +427,49 @@ router.get('/criteria-status/:appraisal_id', async (req, res) => {
         }
 
         const userId = result[0][0].user_id;
-
-        // Updated query to include criteria along with their statuses
         const query2 = `
         SELECT 
             c.criteria_id AS 'Criteria Number',
             c.criteria_description AS 'Criteria Name',
             CASE
-                WHEN MAX(sas.record_id) IS NOT NULL THEN 'Applied'
+                WHEN EXISTS (
+                    SELECT 1
+                    FROM self_appraisal_score_master sas
+                    JOIN apprisal_criteria_parameter_master acp ON sas.c_parameter_id = acp.c_parameter_id
+                    WHERE sas.user_id = ? 
+                    AND sas.record_id IS NOT NULL
+                    AND sas.appraisal_id = ?
+                    AND acp.criteria_id = c.criteria_id
+                ) THEN 'Applied'
                 ELSE 'Not Applied'
             END AS 'Self-Appraisal Status',
             CASE
-                WHEN MAX(cm.record_id) IS NOT NULL THEN 'Reviewed'
+                WHEN EXISTS (
+                    SELECT 1
+                    FROM committee_master cm
+                    JOIN apprisal_criteria_parameter_master acp ON cm.c_parameter_id = acp.c_parameter_id
+                    WHERE cm.user_id_employee = ? 
+                    AND cm.status = 'active'
+                    AND acp.criteria_id = c.criteria_id
+                    AND cm.appraisal_id = ?
+                ) THEN 'Reviewed'
                 ELSE 'Not Reviewed'
             END AS 'Committee Status'
         FROM criteria_master c
         LEFT JOIN apprisal_criteria_parameter_master acp
             ON c.criteria_id = acp.criteria_id
-        LEFT JOIN self_appraisal_score_master sas
-            ON acp.c_parameter_id = sas.c_parameter_id AND sas.user_id = ?
-        LEFT JOIN committee_master cm
-            ON acp.c_parameter_id = cm.c_parameter_id AND cm.user_id_employee = ? AND cm.status = 'active'
         LEFT JOIN appraisal_master am
             ON acp.appraisal_id = am.appraisal_id
         WHERE c.status = 'active'
           AND am.status = 'active'
           AND am.appraisal_id = ?
-        GROUP BY c.criteria_id, c.criteria_description;
-        `;
-
-        // Execute the query with the user ID
-        const criteriaResults = await facultyDb.query(query2, [userId, userId, appraisal_id]);
+        GROUP BY c.criteria_id, c.criteria_description
+        ORDER BY c.criteria_id;
+    `;
+    
+    // Execute the query with the user ID and appraisal ID
+    const criteriaResults = await facultyDb.query(query2, [userId, appraisal_id, userId, appraisal_id, appraisal_id]);
+    
 
         // Log criteria results for debugging
         console.log('Criteria Results:', criteriaResults);
@@ -469,11 +481,10 @@ router.get('/criteria-status/:appraisal_id', async (req, res) => {
             criteriaResults.push({ 'Criteria Number': 'N/A', 'Criteria Name': 'No criteria available', 'Self-Appraisal Status': '', 'Committee Status': '' });
         }
 
-        // Query to get total marks and self-obtained grade
         const queryTotalMarks = `
         SELECT 
         COALESCE(total_marks.TotalMarks, 0) AS 'Total Marks',
-        MAX(gm.grade_title) AS 'Self Obtained Grade'  -- Use MAX or MIN to select a single grade title
+        MAX(gm.grade_title) AS 'Self Obtained Grade'
     FROM (
         SELECT 
             SUM(sas.marks_by_emp) AS TotalMarks
@@ -481,22 +492,26 @@ router.get('/criteria-status/:appraisal_id', async (req, res) => {
         LEFT JOIN apprisal_criteria_parameter_master acp
             ON c.criteria_id = acp.criteria_id
         LEFT JOIN self_appraisal_score_master sas
-            ON acp.c_parameter_id = sas.c_parameter_id AND sas.user_id = ?
+            ON acp.c_parameter_id = sas.c_parameter_id 
+            AND sas.user_id = ?
         LEFT JOIN appraisal_master am
             ON acp.appraisal_id = am.appraisal_id
         WHERE c.status = 'active'
           AND am.status = 'active'
           AND am.appraisal_id = ?
+          AND sas.record_id IS NOT NULL
+          AND sas.appraisal_id = ? -- Ensure scores are from the correct appraisal
     ) AS total_marks
     LEFT JOIN grade_master gm
         ON total_marks.TotalMarks BETWEEN CAST(gm.min_marks AS UNSIGNED) AND CAST(gm.max_marks AS UNSIGNED)
     GROUP BY total_marks.TotalMarks;
     
-        `;
+`;
+
 
         // Execute the query to get total marks and self-obtained grade
         // Execute the query to get total marks and self-obtained grade
-const totalMarksResults = await facultyDb.query(queryTotalMarks, [userId, appraisal_id]);
+const totalMarksResults = await facultyDb.query(queryTotalMarks, [userId, appraisal_id,appraisal_id]);
 console.log('Total Marks Results:', totalMarksResults); // Log entire result set for inspection
 
 
@@ -943,6 +958,45 @@ router.post('/verifyOtp', async function (req, res) {
             res.redirect(`/faculty/reset-password?user_id=${encodeURIComponent(username)}`);
         }}
         catch (err) {console.log('error', err)}})
+
+
+
+
+ router.get('/reports', async(req, res) => {
+        // Fetch the institution ID and department ID for the current user
+        const [userDetails] = await facultyDb.query('SELECT institution_id, dept_id FROM user_master WHERE user_type_id = ?', [req.user.user_id]);
+
+        // Extract institution and department from the result
+        const institute = userDetails[0].institution_id;
+        const department_id = userDetails[0].dept_id;
+
+ 
+    const [results] = await facultyDb.query(`
+    SELECT am.* 
+    FROM appraisal_master am
+    JOIN appraisal_departments ad ON am.appraisal_id = ad.appraisal_id
+    WHERE ad.institution_id = ? 
+    AND ad.department_id = ? 
+    AND am.status = 'active'
+`, [institute, department_id]);
+
+console.log(results);
+
+            res.render('./Faculty/faculty_apprisal_Report.ejs', { results:results});
+        });
+        
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 export default router;

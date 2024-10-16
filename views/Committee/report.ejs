@@ -102,10 +102,10 @@
                             <td><%= employee.criteria_applied %></td>
                             <td><%= employee.appraisal_status %></td>
                             <td><%= employee.committee_status %></td>
-                           <td><form class="form-container" action="/committee/criteria-Status" method="GET">
-                                <input type="hidden" name="user_id" value="<%= employee.user_id %>">
-                                <button type="submit" class="btn btn-view">View</button>
-                            </form>
+                            <td>
+                                <a href="/committee/reports/<%= appraisal_id %>/<%= employee.user_id %>" class="btn btn-view">View</a>
+                            </td>
+                            
                             </td>
                         </tr>
                     <% }) %>

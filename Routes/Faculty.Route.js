@@ -119,7 +119,7 @@ router.post('/verify', async function (req, res) {
             console.log('Generated JWT:', token);
             
             res.cookie('token', token, { httpOnly: true });
-            res.redirect('/faculty/criteria-status');
+            res.redirect('/faculty/appraisalNum');
         }
     } catch (error) {
         console.error(error);

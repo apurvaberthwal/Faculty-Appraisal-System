@@ -158,6 +158,7 @@
         <form id="saveForm" action="/committee/save-committee-scores" method="POST">
             <input type="hidden" name="criteria_id" value="<%= criteriaId %>">
             <input type="hidden" name="user_id" value="<%= userId %>">
+            <input type="hidden" name="appraisal_id" value="<%= appraisalId %>">
             <% parameters.forEach(param => { %>
                 <input type="hidden" id="hidden_committee_score_<%= param.c_parameter_id %>" name="committee_score_<%= param.c_parameter_id %>" 
                 value="">

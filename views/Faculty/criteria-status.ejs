@@ -261,7 +261,8 @@
         console.log('Response data:', data);
         if (data.success) {
             alert('Form submitted successfully!');
-            location.reload(); // Trigger page reload
+            window.location.href = '/faculty/appraisalNum';
+
         } else {
             alert('Error: ' + data.message);
         }

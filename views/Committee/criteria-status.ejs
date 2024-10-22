@@ -139,7 +139,7 @@
                             <td><%= row['Self-Appraisal Status'] %></td>
                             <td><%= row['Committee Status'] %></td>
                             <td>
-                                <form class="form-container" action="/committee/criteria-Status/review/" method="POST">
+                                <form class="form-container" action="/committee/report/review/" method="POST">
                                     <input type="hidden" name="user_id" value="<%= userId %>">
                                     <input type="hidden" name="criteria_id" value="<%= row['Criteria Number'] %>">
                                     <input type="hidden" name="appraisal_id" value="<%= appraisal_id %>">

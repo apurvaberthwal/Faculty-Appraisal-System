@@ -612,7 +612,7 @@ router.get('/appraisal/createCommittee/:appraisalId', async (req, res) => {
                 FROM user_master um
                 JOIN department_master dm ON um.dept_id = dm.dept_id
                 JOIN user_type_master utm ON um.user_type_id = utm.user_type_id
-                WHERE um.institution_id = ? AND um.status = 'active' AND utm.user_type_type = 'employee'
+                WHERE um.institution_id = ? AND um.status = 'active'
             `;
             const [employees] = await facultyDb.execute(activeEmployeesQuery, [instituteId]);
             
@@ -632,47 +632,54 @@ router.get('/appraisal/createCommittee/:appraisalId', async (req, res) => {
         }
 });
     
-
 router.post('/appraisal/submit-committee/:appraisal_id', async (req, res) => {
-        const { committeeMembers, start_date,end_date } = req.body;
-        const principalId = req.user.user_id;
-        const instituteId = req.user.institution_id;
-        const appraisalId = req.params.appraisal_id;
-        // Check for missing data
-        if (!committeeMembers || committeeMembers.length === 0 ) {
-            return res.status(400).json({ success: false, message: "Missing committee members or tenure" });
-        }
-    
-        // Get current date for start_date
-        const startDate =start_date;
-    
-        // Calculate endDate by adding the tenure (in years) to the start_date
-        const endDate = end_date;
-        console.log(committeeMembers, startDate, endDate);
-    
-        // Begin transaction
-        const connection = await facultyDb.getConnection();
-        try {
-            await connection.beginTransaction();
-    
-            // Insert each committee member into committee_member_master
-            const committeeMembersDetails = []; // Array to store details for sending emails
-    
-            for (const memberId of committeeMembers) {
-                // Insert each committee member into committee_member_master
-                const insertQuery = `
-                    INSERT INTO committee_member_master (user_id, institution_id, start_date, end_date,appraisal_id) 
-                    VALUES (?, ?, ?, ?,?);
-                `;
-                await connection.query(insertQuery, [memberId, instituteId, startDate, endDate,appraisalId]);
-    
-                // Fetch user details for email
+    const { committeeMembers, start_date, end_date } = req.body;
+    const principalId = req.user.user_id;
+    const instituteId = req.user.institution_id;
+    const appraisalId = req.params.appraisal_id;
+
+    // Check for missing data
+    if (!committeeMembers || committeeMembers.length === 0) {
+        return res.status(400).json({ success: false, message: "Missing committee members or tenure" });
+    }
+
+    const startDate = start_date;
+    const endDate = end_date;
+
+    const connection = await facultyDb.getConnection();
+    try {
+        await connection.beginTransaction();
+
+        // Insert each committee member into committee_member_master and retrieve their IDs
+        const committeeMembersDetails = [];
+        const committeeMemberIds = [];
+
+        for (const memberId of committeeMembers) {
+            const insertQuery = `
+                INSERT INTO committee_member_master (user_id, institution_id, start_date, end_date, appraisal_id) 
+                VALUES (?, ?, ?, ?, ?);
+            `;
+            await connection.query(insertQuery, [memberId, instituteId, startDate, endDate, appraisalId]);
+
+            // Fetch the committee_member_id of the inserted record
+            const selectCommitteeIdQuery = `
+                SELECT committee_id 
+                FROM committee_member_master 
+                WHERE appraisal_id = ? AND user_id = ?;
+            `;
+            const [committeeMemberResult] = await connection.query(selectCommitteeIdQuery, [appraisalId, memberId]);
+
+            if (committeeMemberResult.length > 0) {
+                const committeeMemberId = committeeMemberResult[0].committee_id;
+                committeeMemberIds.push(committeeMemberId);
+
+                // Fetch user details for email notifications
                 const selectUserDetailsQuery = `
-                SELECT um.user_id, um.email_id, um.first_name, um.last_name, dm.department_name, im.institution_name
-                FROM user_master um
-                JOIN department_master dm ON um.dept_id = dm.dept_id
-                JOIN institution_master im ON um.institution_id = im.institution_id
-                WHERE um.user_id = ?;
+                    SELECT um.user_id, um.email_id, um.first_name, um.last_name, dm.department_name, im.institution_name
+                    FROM user_master um
+                    JOIN department_master dm ON um.dept_id = dm.dept_id
+                    JOIN institution_master im ON um.institution_id = im.institution_id
+                    WHERE um.user_id = ?;
                 `;
                 const [userDetails] = await connection.query(selectUserDetailsQuery, [memberId]);
                 if (userDetails.length > 0) {
@@ -682,53 +689,68 @@ router.post('/appraisal/submit-committee/:appraisal_id', async (req, res) => {
                     committeeMembersDetails.push(memberDetail);
                 }
             }
-            console.log(committeeMembersDetails)
-    
-            // Update user_type_type in user_type_master
-            const userTypeIdsArray = [];
-            for (const memberId of committeeMembers) {
-                const selectQuery = `
-                    SELECT user_type_id 
-                    FROM user_master 
-                    WHERE user_id = ?;
-                `;
-                const [userTypeIdRows] = await connection.query(selectQuery, [memberId]);
-    
-                if (userTypeIdRows.length > 0) {
-                    userTypeIdsArray.push(userTypeIdRows[0].user_type_id);
-                }
-            }
-    
-            for (const userTypeId of userTypeIdsArray) {
-                const updateQuery = `
-                    UPDATE user_type_master 
-                    SET user_type_type = 'committee' 
-                    WHERE user_type_id = ?;
-                `;
-                await connection.query(updateQuery, [userTypeId]);
-            }
-    
-            // Commit transaction
-            await connection.commit();
-    
-            // Send emails to the committee members
-            await sendCommitteeEmails(committeeMembersDetails);
-    
-            res.json({ success: true, message: "Committee members submitted and updated successfully!" });
-        } catch (err) {
-            // Rollback transaction in case of error
-            await connection.rollback();
-            console.error("Error processing committee submission:", err);
-            res.status(500).json({ success: false, message: "Failed to submit committee members" });
-        } finally {
-            // Release the connection
-            connection.release();
         }
+
+        // Retrieve employees for the appraisal from related departments
+        const selectEmployeesQuery = `
+            SELECT um.user_id 
+            FROM user_master um
+            JOIN appraisal_departments ad ON um.dept_id = ad.department_id
+            WHERE ad.appraisal_id = ? AND um.institution_id = ?;
+        `;
+        const [employeeRows] = await connection.query(selectEmployeesQuery, [appraisalId, instituteId]);
+
+        if (employeeRows.length === 0) {
+            throw new Error("No employees found for the selected appraisal.");
+        }
+
+        // Get the list of employees
+        const employees = employeeRows.map(row => row.user_id);
+
+        // Shuffle the employees to randomize the assignment
+        const shuffledEmployees = shuffleArray(employees);
+
+        // Create appraisal assignments: randomly assign employees to committee members
+        const assignmentsPerCommitteeMember = Math.ceil(shuffledEmployees.length / committeeMemberIds.length);
+
+        for (let i = 0; i < committeeMemberIds.length; i++) {
+            const assignedEmployees = shuffledEmployees.slice(i * assignmentsPerCommitteeMember, (i + 1) * assignmentsPerCommitteeMember);
+            
+            for (const employeeId of assignedEmployees) {
+                const insertAppraisalMemberQuery = `
+                    INSERT INTO appraisal_members (appraisal_id, committee_id, user_id)
+                    VALUES (?, ?, ?);
+                `;
+                await connection.query(insertAppraisalMemberQuery, [appraisalId, committeeMemberIds[i], employeeId]);
+            }
+        }
+
+        // Commit transaction
+        await connection.commit();
+
+        // Send emails to the committee members
+        await sendCommitteeEmails(committeeMembersDetails);
+
+        res.json({ success: true, message: "Committee members submitted and employees assigned successfully!" });
+    } catch (err) {
+        // Rollback transaction in case of error
+        await connection.rollback();
+        console.error("Error processing committee submission:", err);
+        res.status(500).json({ success: false, message: "Failed to submit committee members and assign employees" });
+    } finally {
+        // Release the connection
+        connection.release();
+    }
 });
 
-
-
-
+// Helper function to shuffle an array
+function shuffleArray(array) {
+    for (let i = array.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [array[i], array[j]] = [array[j], array[i]];
+    }
+    return array;
+}
 
 
 
@@ -1432,70 +1454,80 @@ router.get("/appraisalReport", async (req, res) => {
         res.status(500).send('Internal Server Error');
       }
 })
-
-
-
 router.get("/reports/:appraisal_id", async (req, res) => {
     const institution_id = req.user.institution_id;
-    const appraisal_id = req.params.appraisal_id; // Get appraisal_id from URL parameter
+    const appraisal_id = req.params.appraisal_id;
     console.log("institution_id", institution_id);
     console.log("appraisal_id", appraisal_id);
 
     try {
         const query = `
         SELECT
-    u.user_id,
-    u.email_id,
-    u.emp_id,
-    CONCAT(u.first_name, ' ', u.last_name) AS name,
-    d.department_name,
-    COUNT(DISTINCT cp.criteria_id) AS criteria_applied,
-    total_criteria.total AS total_criteria,
-    CASE
-        WHEN COUNT(DISTINCT cp.criteria_id) = total_criteria.total THEN 'Fully filled'
-        WHEN COUNT(DISTINCT cp.criteria_id) > 0 THEN 'Partially filled'
-        ELSE 'Not filled'
-    END AS appraisal_status
-FROM
-    user_master u
-JOIN department_master d ON u.dept_id = d.dept_id
-LEFT JOIN self_appraisal_score_master sasm ON u.user_id = sasm.user_id
-    AND sasm.status = 'active' AND sasm.appraisal_id = ? -- Placeholder for appraisal_id
-LEFT JOIN c_parameter_master cp ON sasm.c_parameter_id = cp.c_parameter_id
-LEFT JOIN (
-    SELECT
-        appraisal_id,
-        COUNT(DISTINCT criteria_id) AS total
-    FROM
-        apprisal_criteria_parameter_master 
-    WHERE
-        appraisal_id = ? 
-    GROUP BY
-        appraisal_id
-) total_criteria ON sasm.appraisal_id = total_criteria.appraisal_id
-WHERE
-    u.institution_id = ? 
-GROUP BY
-    u.user_id, u.emp_id, u.first_name, u.last_name, d.department_name, u.email_id, total_criteria.total;
-
+            u.user_id,
+            u.email_id,
+            u.emp_id,
+            CONCAT(u.first_name, ' ', u.last_name) AS name,
+            d.department_name,
+            sasm.marks_by_emp AS self_appraisal_marks,
+            cms.comm_score AS committee_member_score,
+            gm.grade_title AS total_grade,
+            COUNT(DISTINCT cp.criteria_id) AS criteria_applied,
+            MAX(total_criteria.total) AS total_criteria,  -- Use MAX or SUM to handle aggregation
+            CASE
+                WHEN COUNT(DISTINCT cp.criteria_id) = MAX(total_criteria.total) THEN 'Fully filled'
+                WHEN COUNT(DISTINCT cp.criteria_id) > 0 THEN 'Partially filled'
+                ELSE 'Not filled'
+            END AS appraisal_status
+        FROM
+            user_master u
+        JOIN department_master d ON u.dept_id = d.dept_id
+        LEFT JOIN self_appraisal_score_master sasm ON u.user_id = sasm.user_id
+            AND sasm.status = 'active' AND sasm.appraisal_id = ?  
+        LEFT JOIN committee_master cms ON u.user_id = cms.user_id_employee
+            AND cms.appraisal_id = ?  
+        LEFT JOIN c_parameter_master cp ON sasm.c_parameter_id = cp.c_parameter_id
+        LEFT JOIN (
+            SELECT
+                appraisal_id,
+                COUNT(DISTINCT criteria_id) AS total
+            FROM
+                apprisal_criteria_parameter_master 
+            WHERE
+                appraisal_id = ?  
+            GROUP BY
+                appraisal_id
+        ) total_criteria ON sasm.appraisal_id = total_criteria.appraisal_id
+        LEFT JOIN grade_master gm ON 
+            cms.comm_score >= gm.min_marks 
+            AND cms.comm_score <= gm.max_marks  
+        WHERE
+            u.institution_id = ?  -- Use dynamic institution_id
+        GROUP BY
+            u.user_id, 
+            u.email_id, 
+            u.emp_id, 
+            u.first_name, 
+            u.last_name, 
+            d.department_name, 
+            sasm.marks_by_emp, 
+            cms.comm_score,      
+            gm.grade_title;  -- Ensure correct grouping
     `;
     
-    const [rows] = await facultyDb.query(query, [appraisal_id, appraisal_id,institution_id]);
-    // Pass appraisal_id as parameter
+        const [rows] = await facultyDb.query(query, [appraisal_id, appraisal_id, appraisal_id, institution_id]);
+        console.log("Employees Data:", rows);
+        
         if (rows.length === 0) {
-            res.render("./Committee/report", { employees: [], error: "No data found.",appraisal_id:appraisal_id });
+            res.render("./principal/report", { employees: [], error: "No data found.", appraisal_id: appraisal_id });
             return;
         }
-        console.log(rows);
 
-        res.render("./principal/appraisal_Emplist", { employees: rows ,appraisal_id:appraisal_id});
+        res.render("./principal/appraisal_Emplist", { employees: rows, appraisal_id: appraisal_id, error: "" });
     } catch (err) {
         console.error(err);
         res.status(500).send("Server Error");
     }
 });
-
-
 
 
 

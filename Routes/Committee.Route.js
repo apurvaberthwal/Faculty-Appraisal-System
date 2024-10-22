@@ -115,53 +115,82 @@ router.get("/reports/:appraisal_id", async (req, res) => {
     console.log("appraisal_id", appraisal_id);
 
     try {
-        const query = `
-        SELECT
-    u.user_id,
-    u.email_id,
-    u.emp_id,
-    CONCAT(u.first_name, ' ', u.last_name) AS name,
-    d.department_name,
-    COUNT(DISTINCT cp.criteria_id) AS criteria_applied,
-    total_criteria.total AS total_criteria,
-    CASE
-        WHEN COUNT(DISTINCT cp.criteria_id) = total_criteria.total THEN 'Fully filled'
-        WHEN COUNT(DISTINCT cp.criteria_id) > 0 THEN 'Partially filled'
-        ELSE 'Not filled'
-    END AS appraisal_status
-FROM
-    user_master u
-JOIN department_master d ON u.dept_id = d.dept_id
-LEFT JOIN self_appraisal_score_master sasm ON u.user_id = sasm.user_id
-    AND sasm.status = 'active' AND sasm.appraisal_id = ? -- Placeholder for appraisal_id
-LEFT JOIN c_parameter_master cp ON sasm.c_parameter_id = cp.c_parameter_id
-LEFT JOIN (
-    SELECT
-        appraisal_id,
-        COUNT(DISTINCT criteria_id) AS total
-    FROM
-        apprisal_criteria_parameter_master 
-    WHERE
-        appraisal_id = ? 
-    GROUP BY
-        appraisal_id
-) total_criteria ON sasm.appraisal_id = total_criteria.appraisal_id
-WHERE
-    u.institution_id = ? 
-GROUP BY
-    u.user_id, u.emp_id, u.first_name, u.last_name, d.department_name, u.email_id, total_criteria.total;
-
-    `;
-    
-    const [rows] = await facultyDb.query(query, [appraisal_id, appraisal_id,institution_id]);
-    // Pass appraisal_id as parameter
-        if (rows.length === 0) {
-            res.render("./Committee/report", { employees: [], error: "No data found.",appraisal_id:appraisal_id });
+        const user_idQuery = 
+              `SELECT user_id
+               FROM user_master
+               WHERE user_type_id = ?`;
+        
+        const user_idResult = await facultyDb.query(user_idQuery, [req.user.user_id]);
+        console.log("user_idResult", user_idResult)
+        const user_id = user_idResult[0][0].user_id;
+      console.log("user_id", user_id)
+        const committeeQuery = `
+            SELECT committee_id 
+            FROM committee_member_master 
+            WHERE appraisal_id = ? AND institution_id = ? AND user_id = ?;
+        `;
+        const [committeeMembers] = await facultyDb.query(committeeQuery, [appraisal_id, institution_id, user_id]);
+        
+        // Check if there are any committee members
+        if (committeeMembers.length === 0) {
+            res.render("./Committee/report", { employees: [], error: "No committee members found for this appraisal.", appraisal_id: appraisal_id });
             return;
         }
-        console.log(rows);
 
-        res.render("./Committee/report", { employees: rows ,appraisal_id:appraisal_id});
+        const committeeMemberId = committeeMembers[0].committee_id; // Fetch the committee ID of the first member
+        console.log("committeeMemberId", committeeMemberId);
+
+        const employeeQuery = `
+        SELECT
+            u.user_id,
+            u.email_id,
+            u.emp_id,
+            CONCAT(u.first_name, ' ', u.last_name) AS name,
+            d.department_name,
+            COUNT(DISTINCT cp.criteria_id) AS criteria_applied,
+            total_criteria.total AS total_criteria,
+            CASE
+                WHEN COUNT(DISTINCT cp.criteria_id) = total_criteria.total THEN 'Fully filled'
+                WHEN COUNT(DISTINCT cp.criteria_id) > 0 THEN 'Partially filled'
+                ELSE 'Not filled'
+            END AS appraisal_status
+        FROM
+            user_master u
+        JOIN department_master d ON u.dept_id = d.dept_id
+        LEFT JOIN self_appraisal_score_master sasm ON u.user_id = sasm.user_id
+            AND sasm.status = 'active' AND sasm.appraisal_id = ? 
+        LEFT JOIN c_parameter_master cp ON sasm.c_parameter_id = cp.c_parameter_id
+        LEFT JOIN (
+            SELECT
+                appraisal_id,
+                COUNT(DISTINCT criteria_id) AS total
+            FROM
+                apprisal_criteria_parameter_master 
+            WHERE
+                appraisal_id = ? 
+            GROUP BY
+                appraisal_id
+        ) total_criteria ON sasm.appraisal_id = total_criteria.appraisal_id
+        WHERE
+            u.institution_id = ? 
+            AND u.user_id IN (
+                SELECT user_id 
+                FROM appraisal_members 
+                WHERE appraisal_id = ? AND committee_id = ?
+            )
+        GROUP BY
+            u.user_id, u.emp_id, u.first_name, u.last_name, d.department_name, u.email_id, total_criteria.total;
+    `;
+    
+    const [rows] = await facultyDb.query(employeeQuery, [appraisal_id, appraisal_id, institution_id, appraisal_id, committeeMemberId]);
+    
+        if (rows.length === 0) {
+            res.render("./Committee/report", { employees: [], error: "No employees found for the assigned committee member.", appraisal_id: appraisal_id });
+            return;
+        }
+
+        console.log(rows);
+        res.render("./Committee/report", { employees: rows, appraisal_id: appraisal_id });
     } catch (err) {
         console.error(err);
         res.status(500).send("Server Error");
@@ -240,9 +269,10 @@ router.get('/reports/:appraisal_id/:user_id', async (req, res) => {
 
 
 
-router.post("/criteria-Status/review", async (req, res) => {
+router.post("/report/review", async (req, res) => {
     const userId = req.body.user_id;
     const criteriaId = req.body.criteria_id;
+    const appraisalId = req.body.appraisal_id;
     console.log("criteriaId", criteriaId);
     console.log("userId", userId);
     
@@ -275,7 +305,7 @@ router.post("/criteria-Status/review", async (req, res) => {
         const [documents] = await facultyDb.query(documentQuery, [userId, appraisalId, criteriaId, userId]);
 
         // Render EJS template
-        res.render('Committee/review', { parameters, documents, criteriaId, criteriaName: parameters[0]?.criteriaName || 'No Criteria', userId });
+        res.render('Committee/review', { parameters, documents, criteriaId, criteriaName: parameters[0]?.criteriaName || 'No Criteria', userId,appraisalId });
     } catch (err) {
         console.error(err);
         res.status(500).send('Server error');
@@ -283,6 +313,8 @@ router.post("/criteria-Status/review", async (req, res) => {
 });
 
 router.post("/save-committee-scores", async (req, res) => {
+    const appraisal_id = req.body.appraisal_id;
+    console.log("appraisal_id", appraisal_id);
         const { criteria_id, user_id, ...committeeScores } = req.body;
         console.log(req.user.user_id);
         let commid;  // Define commid here
@@ -370,7 +402,8 @@ router.post("/save-committee-scores", async (req, res) => {
                             user_id,        // user_id_employee
                             record_id,      // record_id
                             c_parameter_id, // c_parameter_id
-                            score           // comm_score
+                            score,
+                            appraisal_id          // comm_score
                         ]);
                     } else {
                         console.log(`Record already exists for record_id: ${record_id}`);
@@ -392,7 +425,7 @@ router.post("/save-committee-scores", async (req, res) => {
         // Insert scores
         try {
             const insertQuery = `
-                INSERT INTO committee_master (user_id_committee, user_id_employee, record_id, c_parameter_id, comm_score)
+                INSERT INTO committee_master (user_id_committee, user_id_employee, record_id, c_parameter_id, comm_score,appraisal_id)
                 VALUES (?)
             `;
           
@@ -577,8 +610,8 @@ router.get("/sessionActivate", async (req, res) => {
                 FROM user_master
                 WHERE user_type_id = ?`
             ;
-            const user_id = await facultyDb.query(committeeQuery, [req.user.user_id]);
-            console.log(user_id);
+            const user_idResult = await facultyDb.query(committeeQuery, [req.user.user_id]);
+            const user_id = user_idResult[0][0].user_id;
     const institute_id = req.user.institution_id;
     try {
         // Query to get all appraisal cycles for a specific institution
@@ -592,11 +625,11 @@ router.get("/sessionActivate", async (req, res) => {
     FROM appraisal_master am
     JOIN appraisal_departments ad ON am.appraisal_id = ad.appraisal_id
     JOIN committee_member_master cmm ON am.appraisal_id = cmm.appraisal_id
-    WHERE ad.institution_id = "INS8"
-    AND cmm.user_id = "USR1"
+    WHERE ad.institution_id = ?
+    AND cmm.user_id = ?
     AND cmm.status = 'active';
     
-`, [user_id[0].user_id,institute_id]);
+`, [institute_id,user_id ]);
 
     
     

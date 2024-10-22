@@ -1,0 +1,122 @@
+<%- include("nav")%>
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Employee Report</title>
+    <style>
+        h1 {
+            color: white;
+        }
+        body {
+            background: linear-gradient(120deg, #3a7bd5 100%, #3a6073 100%);
+            font-family: Arial, sans-serif;
+            margin: 0;
+            padding-top: 80px;
+            
+            height: 100vh;
+        }
+        .continer-main{
+            margin-top: 20px;
+            display: flex;
+            justify-content: center;
+}
+        .container {
+            width: 85%;
+            background-color: rgba(0, 0, 0, 0.7);
+            color: white;
+            padding: 25px;
+            border-radius: 8px;
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+        table, th, td {
+            border: 1px solid #ddd;
+        }
+        th, td {
+            padding: 12px;
+            text-align: left;
+        }
+        th {
+            background-color: #f2f2f2;
+            color: black;
+            width: fit-content;
+        }
+        td {
+            color: white;
+        }
+        .btn {
+            display: inline-block;
+            padding: 6px 12px;
+            margin: 4px 2px;
+            border-radius: 4px;
+            color: white;
+            text-align: center;
+            cursor: pointer;
+            text-decoration: none;
+        }
+        .btn-view {
+            background-color: #4CAF50;
+        }
+    </style>
+</head>
+<body>
+    <div class="continer-main">
+    <div class="container">
+   
+            <% if (typeof error !== 'undefined') { %>
+                <div style="color: red; font-weight: bold;">
+                    <%= error %>
+                </div>
+            <% } %>
+                  Principal
+        <h1>Employee Appraisal Report</h1>
+        <table>
+            <thead>
+                <tr>
+                    <th>Employee ID</th>
+                    <th>Name</th>
+                    <th>Email</th>
+                    <th>Department Name</th>
+                    <th>Total Criteria </th>
+                    <th>Criteria Applied</th>
+                    <th>Appraisal Status</th>
+                    <th>Committee Status</th>
+                    <th>Action</th>
+                </tr>
+            </thead>
+            <tbody>
+                <% if (employees && employees.length > 0) { %>
+                    <% employees.forEach((employee, index) => { %>
+                        <tr>
+                            <td><%= employee.emp_id %></td>
+                            <td><%= employee.name %></td>
+                            <td><%= employee.email_id %></td>
+                            <td><%= employee.department_name %></td>
+                            <td><%= employee.total_criteria %></td>
+                            <td><%= employee.criteria_applied %></td>
+                            <td><%= employee.appraisal_status %></td>
+                            <td><%= employee.committee_status %></td>
+                            <td>
+                                <a href="/committee/reports/<%= appraisal_id %>/<%= employee.user_id %>" class="btn btn-view">View</a>
+                            </td>
+                            
+                            </td>
+                        </tr>
+                    <% }) %>
+                <% } else { %>
+                    <tr>
+                        <td colspan="7">No employees found</td>
+                    </tr>
+                <% } %>
+            </tbody>
+        </table>
+    </div>
+</div>
+</body>
+</html>

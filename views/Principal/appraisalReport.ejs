@@ -64,6 +64,7 @@
         justify-content: center;
         margin-top: 20px;
         position: relative;
+        gap: 10px; /* Add spacing between buttons */
     }
 
     button {
@@ -81,12 +82,18 @@
         background-color: #5eff50;
     }
     </style>
+    
 </head>
 
 <body>
+    <!-- Button container for PDF and CSV download -->
+    <div class="button-container">
+        <button onclick="downloadPDF()">Download as PDF</button>
+        <button onclick="downloadCSV()">Download as CSV</button>
+    </div>
     <div class="container">
         <h2>Appraisal Cycle Table</h2>
-        <table>
+        <table id="appraisal-table">
             <thead>
                 <tr>
                     <th>Appraisal ID</th>
@@ -112,14 +119,84 @@
                 <% }) %>
             </tbody>
         </table>
+
     </div>
 
+    <!-- Add jsPDF and PapaParse CDN links -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.25/jspdf.plugin.autotable.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.3.0/papaparse.min.js"></script>
+    
     <script>
-        function redirectToEmployeeList (appraisalId) {
-            // Redirecting to the report page for the selected appraisal.
+        function redirectToEmployeeList(appraisalId) {
             window.location.href = `/principal/reports/${appraisalId}`;
-            
         }
+
+        function downloadCSV() {
+    const table = document.getElementById("appraisal-table");
+    const rows = table.querySelectorAll("tr");
+    const csvData = [];
+
+    rows.forEach((row) => {
+        const cols = row.querySelectorAll("td, th");
+        const csvRow = [];
+        cols.forEach((col, index) => {
+            let text = col.innerText;
+            if (index === 2 || index === 3) { // Check if the column is Start Date (index 2) or End Date (index 3)
+                const date = new Date(text);
+                if (!isNaN(date)) {
+                    text = date.toLocaleDateString('en-GB', {
+                        day: '2-digit',
+                        month: '2-digit',
+                        year: '2-digit'
+                    });
+                }
+            }
+            if (index < cols.length - 1) {
+                csvRow.push(text);
+            }
+        });
+        csvData.push(csvRow.join(","));
+    });
+
+    const csvString = csvData.join("\n");
+    const blob = new Blob([csvString], { type: "text/csv" });
+    const link = document.createElement("a");
+    link.href = URL.createObjectURL(blob);
+    link.download = "appraisal_cycle_table.csv";
+    link.click();
+}
+
+
+function downloadPDF() {
+        const { jsPDF } = window.jspdf; 
+        const doc = new jsPDF();
+        const table = document.getElementById("appraisal-table");
+
+        doc.text("Appraisal Cycle Table", 20, 10);
+
+        const tableRows = [];
+        const tableHead = [['ID', 'Name', 'Start Date', 'End Date', 'Status']];  // Define table headers
+
+        const rows = table.querySelectorAll("tbody tr");
+        rows.forEach((row) => {
+            const cols = row.querySelectorAll("td");
+            const rowData = [];
+            cols.forEach((col, colIndex) => {
+                if (colIndex < cols.length - 1) {
+                    rowData.push(col.innerText);
+                }
+            });
+            tableRows.push(rowData);
+        });
+
+        doc.autoTable({
+            head: tableHead,
+            body: tableRows
+        });
+
+        doc.save("appraisal_cycle_table.pdf");
+    }
     </script>
 </body>
 

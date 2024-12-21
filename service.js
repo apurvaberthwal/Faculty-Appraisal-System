@@ -309,7 +309,7 @@ export async function getCriteriaAppliedPercentage(userId, appraisalId) {
                     appraisal_id
             ) total_criteria ON sasm.appraisal_id = total_criteria.appraisal_id
             WHERE
-                sasm.user_id = ? AND sasm.appraisal_id = ? AND sasm.status = 'active'
+                sasm.user_id = ? AND sasm.appraisal_id = ? 
             GROUP BY
                 total_criteria.total;  -- Add GROUP BY here
         `, [appraisalId, userId, appraisalId]);

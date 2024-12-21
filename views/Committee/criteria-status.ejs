@@ -112,9 +112,12 @@
 </head>
 <body>
     <!-- Display success message if available -->
-    <% if (successMsg && successMsg.length > 0) { %>
-        <div class="alert-success" style="display: block;"><%= successMsg %></div>
-    <% } %>
+    <script>
+        const successMsg = "<%= successMsg %>";
+        if (successMsg) {
+            alert(successMsg); // Display the popup
+        }
+    </script>
     <button class="btn btn-back" onclick="history.back()">Back</button>
     <div class="container-main">
         <div class="container">
@@ -136,8 +139,8 @@
                         <tr>
                             <td><%= row['Criteria Number'] %></td>
                             <td><%= row['Criteria Name'] %></td>
-                            <td><%= row['Self-Appraisal Status'] %></td>
-                            <td><%= row['Committee Status'] %></td>
+                            <td><%= row['Self-Approved Marks'] %></td>
+                            <td><%= row['Committee Marks'] %></td>
                             <td>
                                 <form class="form-container" action="/committee/report/review/" method="POST">
                                     <input type="hidden" name="user_id" value="<%= userId %>">

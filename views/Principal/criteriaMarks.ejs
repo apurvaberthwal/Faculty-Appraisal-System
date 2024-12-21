@@ -4,66 +4,41 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Grade Table</title>
+    <title>Criteria Weightage</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels"></script> <!-- Include Data Labels Plugin -->
     <style>
+        /* Styling */
         body {
-            background: linear-gradient(120deg, #3a7bd5 0%, #3a6073 100%);
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            font-family: Arial, sans-serif;
             margin: 0;
             padding: 0;
+            height: 100%;
+            background: linear-gradient(120deg, #3a7bd5 0%, #3a6073 100%);
         }
 
         .container {
             width: 90%;
-            margin: 20px auto;
-            padding: 30px;
-            background-color: rgba(255, 255, 255, 0.05);
             color: white;
-            border-radius: 12px;
-            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.2);
+            padding: 25px;
+            border-radius: 8px;
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+            margin: 20px auto;
+            background-color: rgba(0, 0, 0, 0.7);
+            height: 100%;
         }
 
-        h2 {
-            font-size: 28px;
+        #graphContainer {
+            margin-top: 30px;
             text-align: center;
-            margin-bottom: 20px;
-            color: #f2f2f2;
         }
 
-        /* Table Styling */
-        table {
-            width: 100%;
-            border-collapse: collapse;
-            margin: 20px 0;
-            background-color: rgba(255, 255, 255, 0.05);
+        canvas {
+            margin: 20px auto;
+            display: block;
+            width: 30% !important; /* Increase width to 80% of the container */
+            height: 350px !important; /* Increase height to 400px */
         }
-
-        table, th, td {
-            border: 1px solid black;
-        }
-
-        th, td {
-            padding: 15px;
-            text-align: center;
-            border: 1px solid #ddd;
-            color: #f0f0f0;
-            font-size: 14px;
-        }
-
-        th {
-            background-color: #3498db;
-            color: #fff;
-        }
-
-        tbody tr:nth-child(even) {
-            background-color: rgba(255, 255, 255, 0.1);
-        }
-
-        tbody tr:hover {
-            background-color: rgba(255, 255, 255, 0.2);
-        }
-
-        /* Button Styling */
         .buttons-container {
             display: flex;
             justify-content: space-between;
@@ -92,82 +67,17 @@
             background-color: #2fd943;
         }
 
-        /* Modal Styling */
-        .modal {
-            display: none;
-            position: fixed;
-            z-index: 9999;
-            left: 0;
-            top: 0;
-            width: 100%;
-            height: 100%;
-            background: rgba(0, 0, 0, 0.6);
-            align-items: center;
-            justify-content: center;
-        }
-
-        .modal-content {
-            background-color: #fefefe;
-            padding: 20px;
-            border-radius: 10px;
-            width: 90%;
-            max-width: 400px;
-            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
-            text-align: center;
-        }
-
-        .modal-header {
-            font-size: 24px;
-            margin-bottom: 15px;
-        }
-
-        .modal-buttons {
-            display: flex;
-            justify-content: space-around;
-            margin-top: 20px;
-        }
-
-        .modal-buttons button {
-            padding: 10px 15px;
-        }
-
-        @media (max-width: 768px) {
-            button {
-                width: 100%;
-                margin: 10px 0;
-            }
-        }
     </style>
 </head>
 <body>
     <div class="container">
-        <h2>Grade Table</h2>
-        <h1>Appraisal Details</h1>
-        <table>
-            <thead>
-                <tr>
-                    <th>Criteria Name</th>
-                    <th>Total Parameters</th>
-                    <th>Total Marks</th>
-                </tr>
-            </thead>
-            <tbody>
-                <% if (criteriaData.length > 0) { %>
-                    <% criteriaData.forEach(function(item) { %>
-                        <tr>
-                            <td><%= item.criteria_name %></td>
-                            <td><%= item.total_parameters %></td>
-                            <td><%= item.total_marks || 0 %></td>
-                        </tr>
-                    <% }); %>
-                <% } else { %>
-                    <tr>
-                        <td colspan="3">No criteria found for this appraisal.</td>
-                    </tr>
-                <% } %>
-            </tbody>
-        </table>
+        <center><h1><%=appraisal_cycle_name %></h1></center><br><br>
+        <h2>Criteria Weightage</h2>
+        <canvas id="criteriaChart"></canvas>
 
+        <h3>Parameter Weightage (Click a criterion to view)</h3>
+        <canvas id="parameterChart"></canvas>
+        
         <div class="buttons-container">
             <!-- Add Go to Grade Page Button -->
             
@@ -175,74 +85,154 @@
 
         </div>
 
-        <!-- Modal for Appraisal Creation -->
-        <div id="myModal" class="modal">
-            <div class="modal-content">
-                <div class="modal-header">Appraisal Cycle Created Successfully!</div>
-                <p>Do you wish to add committee members?</p>
-                <div class="modal-buttons">
-                    <button id="yesButton">Yes</button>
-                    <button id="noButton">No</button>
-                </div>
-            </div>
-        </div>
-
-        <!-- Modal for Redirect -->
-        <div id="redirectModal" class="modal">
-            <div class="modal-content">
-                <div class="modal-header">Redirecting...</div>
-                <p>You are being redirected to add committee members.</p>
-                <div class="modal-buttons">
-                    <button id="redirectOkButton">OK</button>
-                </div>
-            </div>
-        </div>
-
-        <script>
-            var criteriaData = <%- JSON.stringify(criteriaData) %>;
-
-            const modal = document.getElementById('myModal');
-            const yesButton = document.getElementById('yesButton');
-            const noButton = document.getElementById('noButton');
-            const redirectModal = document.getElementById('redirectModal');
-            const redirectOkButton = document.getElementById('redirectOkButton');
-
-            // Show committee member modal
-            yesButton.addEventListener('click', () => {
-                modal.style.display = 'none';
-                // Show the redirect modal
-                redirectModal.style.display = 'flex';
-            });
-
-            // Close redirect modal and simulate redirection
-            redirectOkButton.addEventListener('click', () => {
-                redirectModal.style.display = 'none';
-                // Simulate redirection
-                console.log('Redirecting to add committee members...');
-            });
-
-            // Close modal when clicking "No"
-            noButton.addEventListener('click', () => {
-                modal.style.display = 'none';
-            });
-
-            // Close modals when clicking outside of them
-            window.onclick = function(event) {
-                if (event.target === modal || event.target === redirectModal) {
-                    modal.style.display = 'none';
-                    redirectModal.style.display = 'none';
-                }
-            };
-
-            // Send appraisal_id and total_marks when going to the grade page
-            const goToGradeButton = document.getElementById('goToGradeButton');
-            goToGradeButton.addEventListener('click', () => {
-                const appraisalId = "<%= appraisal_id %>" // Replace with the actual appraisal_id if dynamic
-                const totalMarks = criteriaData.reduce((total, item) => total + (parseInt(item.total_marks) || 0), 0); // Calculate total marks
-                const url = `/principal/grade?appraisal_id=${appraisalId}&total_marks=${totalMarks}`;
-                window.location.href = url;
-            });
-        </script>
     </div>
+    
+    <script>
+        const goToGradeButton = document.getElementById('goToGradeButton');
+    goToGradeButton.addEventListener('click', () => {
+        const appraisalId = "<%= appraisal_id %>" // Replace with the actual appraisal_id if dynamic
+        const totalMarks = criteriaData.reduce((total, item) => total + (parseInt(item.total_marks) || 0), 0); // Calculate total marks
+        const url = `/principal/grade?appraisal_id=${appraisalId}&total_marks=${totalMarks}`;
+        window.location.href = url;
+    });
+      const criteriaData = <%- JSON.stringify(criteriaData) %>;
+
+// Prepare data for the Criteria Chart (including marks)
+const criteriaNames = criteriaData.map(item => `${item.criteria_name} - ${item.total_marks} Marks`);
+const criteriaMarks = criteriaData.map(item => item.total_marks || 0);
+
+// Render the Criteria Chart with data labels
+const criteriaCtx = document.getElementById('criteriaChart').getContext('2d');
+const criteriaChart = new Chart(criteriaCtx, {
+    type: 'pie',
+    data: {
+        labels: criteriaNames,
+        datasets: [{
+            label: 'Criteria Weightage',
+            data: criteriaMarks,
+            backgroundColor: ['#3498db', '#2ecc71', '#e74c3c', '#9b59b6', '#f1c40f'], // Add more colors
+        }]
+    },
+    options: {
+        responsive: true,
+        plugins: {
+            datalabels: {
+                formatter: (value, ctx) => {
+                    return value + ' Marks';
+                },
+                color: '#fff',
+                font: {
+                    weight: 'bold',
+                    size: 14,
+                },
+                anchor: 'center',
+                align: 'center',
+            }
+        },
+        legend: {
+            position: 'right',
+            labels: {
+                font: {
+                    size: 14,
+                    weight: 'bold'
+                },
+                boxWidth: 20,
+                padding: 15
+            }
+        }
+    },
+    plugins: [ChartDataLabels]
+});
+
+// Variable to store the parameter chart instance
+let parameterChartInstance;
+
+// Handle click event to fetch parameter data dynamically
+document.getElementById('criteriaChart').onclick = async function (evt) {
+    const activePoint = criteriaChart.getElementsAtEventForMode(evt, 'nearest', { intersect: true }, false);
+    if (activePoint.length > 0) {
+        const index = activePoint[0].index;
+        const selectedCriteria = criteriaData[index];
+
+        // Fetch parameter data for selected criteria
+        const response = await fetch(`/principal/criteriaParameters/${selectedCriteria.criteria_id}/${"<%= appraisal_id %>"}`);
+        const result = await response.json();
+
+        // Check if parameter data exists
+        if (result.parameterData && result.parameterData.length > 0) {
+            const parameterNames = result.parameterData.map(param => `${param.c_parameter_id}`);
+            const parameterMarks = result.parameterData.map(param => param.parameter_marks);
+            const parameterDescriptions = result.parameterData.map(param => param.parameter_description);
+
+            if (parameterChartInstance) {
+                parameterChartInstance.destroy();
+            }
+
+            const parameterCtx = document.getElementById('parameterChart').getContext('2d');
+            parameterChartInstance = new Chart(parameterCtx, {
+                type: 'bar', // Bar chart
+                data: {
+                    labels: parameterNames,
+                    datasets: [{
+                        label: 'Criteria Name: ' + selectedCriteria.criteria_name,
+                        data: parameterMarks,
+                        backgroundColor: '#2980b9',
+                    }]
+                },
+                options: {
+                    scales: {
+                        y: {
+                            beginAtZero: true
+                        }
+                    }
+                }
+            });
+        } else {
+            alert("No parameters found for this criterion.");
+        }
+    }
+};
+
+// Wrap the chart initialization in an async function
+async function initializeChart() {
+    if (criteriaData.length > 0) {
+        const firstCriteria = criteriaData[0];
+        const response = await fetch(`/principal/criteriaParameters/${firstCriteria.criteria_id}/${"<%= appraisal_id %>"}`);
+        const result = await response.json();
+
+        if (result.parameterData && result.parameterData.length > 0) {
+            const parameterNames = result.parameterData.map(param => `${param.c_parameter_id}`);
+            const parameterMarks = result.parameterData.map(param => param.parameter_marks);
+            const parameterDescriptions = result.parameterData.map(param => param.parameter_description);
+
+            const parameterCtx = document.getElementById('parameterChart').getContext('2d');
+            parameterChartInstance = new Chart(parameterCtx, {
+                type: 'bar',
+                data: {
+                    labels: parameterNames,
+                    datasets: [{
+                        label: 'Criteria Name: ' + firstCriteria.criteria_name,
+                        data: parameterMarks,
+                        backgroundColor: '#2980b9',
+                    }]
+                },
+                options: {
+                    scales: {
+                        y: {
+                            beginAtZero: true
+                        }
+                    }
+                }
+            });
+        } else {
+            alert("No parameters found for the first criterion.");
+        }
+    }
+}
+
+// Call the async function to load the default chart for the first criterion
+initializeChart();
+
+    </script>
 </body>
 </html>

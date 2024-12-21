@@ -49,7 +49,8 @@ router.use((req, res, next) => {
             req.user = user;
             console.log('Decoded JWT:', user); // Log the decoded JWT payload
             console.log('User ID:', user.user_id); // Log the user ID specifically
-            res.locals.loggedIn = user.loggedIn;
+            res.locals.loggedIn =true;
+           // console.log(loggedIn)
             res.locals.user = user; // Set a local variable
         } catch (err) {
             console.error('JWT verification error:', err);
@@ -119,7 +120,7 @@ router.post('/verify', async function (req, res) {
             console.log('Generated JWT:', token);
             
             res.cookie('token', token, { httpOnly: true });
-            res.redirect('/faculty/appraisalNum');
+            res.redirect('/faculty/dashboard');
         }
     } catch (error) {
         console.error(error);
@@ -205,11 +206,11 @@ router.post('/login', async (req, res) => {
     
 
         // If everything is valid, sign and set JWT token
-        const token = jwt.sign({ user_id, role }, process.env.JWT_SECRET, { expiresIn: '2h' });
+        const token = jwt.sign({ user_id, role }, process.env.JWT_SECRET, { expiresIn: '4h' });
         res.cookie('token', token, { httpOnly: true });
 
         console.log("Login successful, redirecting to Faculty home");
-        return res.redirect('/Faculty/criteria-status');}
+        return res.redirect('/faculty/dashboard');}
 
     } catch (err) {
         console.error("Server error during login: ", err);
@@ -372,9 +373,7 @@ router.get('/get-parameters/:criteriaId', async (req, res) => {
 });
 
 
-router.get("/dashboard", async(req, res) =>{
-    res.render("./Faculty/appraisal")
-})
+
 router.get('/reset-password', (req, res) => {
     const user_id = req.query.user_id;
     res.render('./Faculty/reset-password', { user_id });
@@ -419,57 +418,73 @@ router.get('/criteria-status/:appraisal_id', async (req, res) => {
         }
 
         // Query to get the user ID based on the user type ID
-        const sql = `SELECT user_id FROM user_master WHERE user_type_id = ?`;
+        const sql = `SELECT first_name, middle_name, last_name ,user_id FROM user_master WHERE user_type_id = ?`;
         const result = await facultyDb.query(sql, [userTypeId]);
+        console.log(result);
+
+        let name = '';
+        if (result[0] && result[0][0]) {
+            const firstName = result[0][0].first_name || '';
+            const middleName = result[0][0].middle_name || '';
+            const lastName = result[0][0].last_name || '';
+            
+            name = [firstName, middleName, lastName].filter(Boolean).join(' ');
+        }
+
+       
 
         if (result.length === 0) {
             return res.status(404).send('User not found');
         }
+        const nameQuery = `SELECT appraisal_cycle_name from appraisal_master where appraisal_id = ?`;
 
+        const [nameResult] = await facultyDb.query(nameQuery, [appraisal_id]);
         const userId = result[0][0].user_id;
+        console.log(nameResult);
         const query2 = `
         SELECT 
-            c.criteria_id AS 'Criteria Number',
-            c.criteria_description AS 'Criteria Name',
-            CASE
-                WHEN EXISTS (
-                    SELECT 1
-                    FROM self_appraisal_score_master sas
-                    JOIN apprisal_criteria_parameter_master acp ON sas.c_parameter_id = acp.c_parameter_id
-                    WHERE sas.user_id = ? 
-                    AND sas.record_id IS NOT NULL
-                    AND sas.appraisal_id = ?
-                    AND acp.criteria_id = c.criteria_id
-                ) THEN 'Applied'
-                ELSE 'Not Applied'
-            END AS 'Self-Appraisal Status',
-            CASE
-                WHEN EXISTS (
-                    SELECT 1
-                    FROM committee_master cm
-                    JOIN apprisal_criteria_parameter_master acp ON cm.c_parameter_id = acp.c_parameter_id
-                    WHERE cm.user_id_employee = ? 
-                    AND cm.status = 'active'
-                    AND acp.criteria_id = c.criteria_id
-                    AND cm.appraisal_id = ?
-                ) THEN 'Reviewed'
-                ELSE 'Not Reviewed'
-            END AS 'Committee Status'
-        FROM criteria_master c
-        LEFT JOIN apprisal_criteria_parameter_master acp
-            ON c.criteria_id = acp.criteria_id
-        LEFT JOIN appraisal_master am
-            ON acp.appraisal_id = am.appraisal_id
-        WHERE c.status = 'active'
-          AND am.status = 'active'
-          AND am.appraisal_id = ?
-        GROUP BY c.criteria_id, c.criteria_description
-        ORDER BY c.criteria_id;
-    `;
+        c.criteria_id AS 'Criteria Number',
+        c.criteria_description AS 'Criteria Name',
+        CASE
+            WHEN EXISTS (
+                SELECT 1
+                FROM self_appraisal_score_master sas
+                JOIN apprisal_criteria_parameter_master acp ON sas.c_parameter_id = acp.c_parameter_id
+                WHERE sas.user_id = ? 
+                  AND sas.appraisal_id = ? 
+                  
+                  AND acp.criteria_id = c.criteria_id
+            ) THEN 'Applied'
+            ELSE 'Not Applied'
+        END AS 'Self-Appraisal Status',
+        CASE
+            WHEN EXISTS (
+                SELECT 1
+                FROM committee_master cm
+                JOIN apprisal_criteria_parameter_master acp ON cm.c_parameter_id = acp.c_parameter_id
+                WHERE cm.user_id_employee = ? 
+                  AND cm.status = 'active'
+                  AND acp.criteria_id = c.criteria_id
+                  AND cm.appraisal_id = ?
+            ) THEN 'Reviewed'
+            ELSE 'Not Reviewed'
+        END AS 'Committee Status'
+    FROM criteria_master c
+    LEFT JOIN apprisal_criteria_parameter_master acp
+        ON c.criteria_id = acp.criteria_id
+    LEFT JOIN appraisal_master am
+        ON acp.appraisal_id = am.appraisal_id
+    WHERE c.status = 'active'
+      AND am.status = 'active'
+      AND am.appraisal_id = ?
+    GROUP BY c.criteria_id, c.criteria_description
+    ORDER BY c.criteria_id;
     
-    // Execute the query with the user ID and appraisal ID
-    const criteriaResults = await facultyDb.query(query2, [userId, appraisal_id, userId, appraisal_id, appraisal_id]);
-    
+`;
+
+// Execute the query with the updated conditions
+const criteriaResults = await facultyDb.query(query2, [userId, appraisal_id, userId, appraisal_id, appraisal_id]);
+             
 
         // Log criteria results for debugging
         console.log('Criteria Results:', criteriaResults);
@@ -483,56 +498,43 @@ router.get('/criteria-status/:appraisal_id', async (req, res) => {
 
         const queryTotalMarks = `
         SELECT 
-        COALESCE(total_marks.TotalMarks, 0) AS 'Total Marks',
-        MAX(gm.grade_title) AS 'Self Obtained Grade'
-    FROM (
-        SELECT 
-            SUM(sas.marks_by_emp) AS TotalMarks
-        FROM criteria_master c
-        LEFT JOIN apprisal_criteria_parameter_master acp
-            ON c.criteria_id = acp.criteria_id
-        LEFT JOIN self_appraisal_score_master sas
-            ON acp.c_parameter_id = sas.c_parameter_id 
-            AND sas.user_id = ?
-        LEFT JOIN appraisal_master am
-            ON acp.appraisal_id = am.appraisal_id
-        WHERE c.status = 'active'
-          AND am.status = 'active'
-          AND am.appraisal_id = ?
-          AND sas.record_id IS NOT NULL
-          AND sas.appraisal_id = ? -- Ensure scores are from the correct appraisal
-    ) AS total_marks
-    LEFT JOIN grade_master gm
-        ON total_marks.TotalMarks BETWEEN CAST(gm.min_marks AS UNSIGNED) AND CAST(gm.max_marks AS UNSIGNED)
-    GROUP BY total_marks.TotalMarks;
+    COALESCE(total.TotalMarks, 0) AS 'Total Marks',
+    MAX(gm.grade_title) AS 'Self Obtained Grade' -- Use MAX or MIN to select a single grade
+FROM (
+    SELECT 
+        SUM(sas.marks_by_emp) AS TotalMarks
+    FROM self_appraisal_score_master sas
+    WHERE sas.appraisal_id = ? -- Pass the specific appraisal ID
+      AND sas.user_id = ? -- Pass the specific user ID
+) AS total
+LEFT JOIN grade_master gm ON total.TotalMarks BETWEEN CAST(gm.min_marks AS UNSIGNED) AND CAST(gm.max_marks AS UNSIGNED)
+GROUP BY total.TotalMarks; -- Group by TotalMarks
+  `;
+    console.log(userId,"sedf")
     
-`;
-
-
-        // Execute the query to get total marks and self-obtained grade
-        // Execute the query to get total marks and self-obtained grade
-const totalMarksResults = await facultyDb.query(queryTotalMarks, [userId, appraisal_id,appraisal_id]);
-console.log('Total Marks Results:', totalMarksResults); // Log entire result set for inspection
-
-
-    // Access the first element of the results array and the first object within it
-    const totalMarks = totalMarksResults[0][0]['Total Marks'] || 0; // Access the first object in the first array
-    const selfObtainedGrade = totalMarksResults[0][0]['Self Obtained Grade'] || 'N/A'; // Access the first object in the first array
-
-    // Log the individual results
+    
+    // Execute the query to get total marks and self-obtained grade
+    const totalMarksResults = await facultyDb.query(queryTotalMarks, [ appraisal_id,userId]);
+    console.log('Total Marks Results:', totalMarksResults);
+    
+    // Extract and display the results
+    const totalMarks = totalMarksResults[0][0]['Total Marks'];
+    const selfObtainedGrade = totalMarksResults[0][0]['Self Obtained Grade'] || 'N/A';
+    
     console.log('Total Marks:', totalMarks);
     console.log('Self Obtained Grade:', selfObtainedGrade);
 
 
-
 // Render the results in the view
         res.render('./Faculty/criteria-status', {
+            name,
             userId,
             data: criteriaResults,
             totalMarks,
             selfObtainedGrade,
             successMsg,
-            appraisalId: appraisal_id
+            appraisalId: appraisal_id,
+            appraisal_name: nameResult[0].appraisal_cycle_name
         });
 
     } catch (err) {
@@ -542,7 +544,7 @@ console.log('Total Marks Results:', totalMarksResults); // Log entire result set
 });
 
 
-router.get("/appraisalnum", async (req, res) => {
+router.get("/dashboard", async (req, res) => {
     console.log(req.user);
     try {
         // Fetch the institution ID and department ID for the current user

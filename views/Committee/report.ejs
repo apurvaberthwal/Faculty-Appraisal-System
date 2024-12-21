@@ -83,10 +83,10 @@
                     <th>Name</th>
                     <th>Email</th>
                     <th>Department Name</th>
-                    <th>Total Criteria </th>
-                    <th>Criteria Applied</th>
+                    
                     <th>Appraisal Status</th>
                     <th>Committee Status</th>
+                    <th>Grade</th>
                     <th>Action</th>
                 </tr>
             </thead>
@@ -98,10 +98,10 @@
                             <td><%= employee.name %></td>
                             <td><%= employee.email_id %></td>
                             <td><%= employee.department_name %></td>
-                            <td><%= employee.total_criteria %></td>
-                            <td><%= employee.criteria_applied %></td>
+                            
                             <td><%= employee.appraisal_status %></td>
-                            <td><%= employee.committee_status %></td>
+                            <td><%= employee.total_comm_score || 'N/A' %></td>
+                            <td><%= employee.total_grade%></td>
                             <td>
                                 <a href="/committee/reports/<%= appraisal_id %>/<%= employee.user_id %>" class="btn btn-view">View</a>
                             </td>

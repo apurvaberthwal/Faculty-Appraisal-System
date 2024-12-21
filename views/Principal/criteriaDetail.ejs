@@ -1,0 +1,59 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title><%= criteriaName %> Parameters</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 20px;
+        }
+        h1 {
+            text-align: center;
+        }
+        canvas {
+            max-width: 600px;
+            margin: 0 auto;
+        }
+    </style>
+</head>
+<body>
+    <h1><%= criteriaName %> Parameters</h1>
+
+    <canvas id="parametersChart"></canvas>
+
+    <script>
+        const parameters = <%= JSON.stringify(parameters) %>; // Passing parameters as JSON
+
+        // Creating the bar chart for parameters
+        const ctx = document.getElementById('parametersChart').getContext('2d');
+        const parametersChart = new Chart(ctx, {
+            type: 'bar',
+            data: {
+                labels: parameters.map((_, index) => `Parameter ${index + 1}`), // Create labels like 'Parameter 1', 'Parameter 2', etc.
+                datasets: [{
+                    label: '<%= criteriaName %> Scores',
+                    data: parameters,
+                    backgroundColor: 'rgba(75, 192, 192, 0.2)',
+                    borderColor: 'rgba(75, 192, 192, 1)',
+                    borderWidth: 1
+                }]
+            },
+            options: {
+                responsive: true,
+                plugins: {
+                    legend: {
+                        position: 'top',
+                    },
+                    title: {
+                        display: true,
+                        text: 'Scores for <%= criteriaName %>'
+                    }
+                }
+            }
+        });
+    </script>
+</body>
+</html>

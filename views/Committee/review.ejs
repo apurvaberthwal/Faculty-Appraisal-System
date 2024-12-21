@@ -98,84 +98,82 @@
     <button class="btn btn-back" onclick="history.back()">Back</button>
 
     <div class="continer-main">
-    <div class="container">
-        <h1><%= criteriaName ? criteriaName : 'No Criteria' %></h1>
-        <div class="copy">
-            <input type="checkbox" id="approveScoresCheckbox" onclick="copyScores()">
-            <label for="approveScoresCheckbox">Approve Self-Approved Scores</label>
-        </div>
-        
-        <table>
-            <thead>
-                <tr>
-                    <th>S.No</th>
-                    <th>Parameter Name</th>
-                    <th>Max Score</th>
-                    <th>Self Approved Score</th>
-                    <th>Committee Score</th>
-                    <th>Supportive Documents</th>
-                </tr>
-            </thead>
-            <tbody>
-                <% let totalMaxMarks = 0, totalSelfApproved = 0, totalCommitteeScore = 0; %>
-                <% parameters.forEach((param, index) => { %>
-                    <% totalMaxMarks += param.parameter_max_marks; %>
-                    <% totalSelfApproved += param.marks_by_emp || 0; %>
-                    <% totalCommitteeScore += param.committeeScore !== 'Pending' ? param.committeeScore : 0; %>
+        <div class="container">
+            <h1><%= criteriaName ? criteriaName : 'No Criteria' %></h1>
+            <div class="copy">
+                <input type="checkbox" id="approveScoresCheckbox" onclick="copyScores()">
+                <label for="approveScoresCheckbox">Approve Self-Approved Scores</label>
+            </div>
+            
+            <table>
+                <thead>
                     <tr>
-                        <td><%= index + 1 %></td>
-                        <td><%= param.parameter_description %></td>
-                        <td><%= param.parameter_max_marks %></td>
-                        <td><%= param.marks_by_emp || 'N/A' %></td>
-                        <td>
-                            <input type="number" class="committee-score" 
-                                   value="<%= param.marks_by_emp || 0 %>" 
-                                   min="0" max="<%= param.parameter_max_marks %>"
-                                   oninput="validateCommitteeScore(this)"
-                                   name="committee_score_<%= param.c_parameter_id %>">
-                        </td>
-                        <td>
-                            <% let paramDocs = documents.filter(doc => doc.c_parameter_id === param.c_parameter_id); %>
-                            <% if (paramDocs.length > 0) { %>
-                                <% paramDocs.forEach(doc => { %>
-                                    <a href="/<%= doc.document_path %>" target="_blank" class="document-link">Document <%= doc.document_id %></a><br>
-                                <% }); %>
-                            <% } else { %>
-                                No documents
-                            <% } %>
-                        </td>
+                        <th>S.No</th>
+                        <th>Parameter Name</th>
+                        <th>Max Score</th>
+                        <th>Self Approved Score</th>
+                        <th>Committee Score</th>
+                        <th>Supportive Documents</th>
                     </tr>
-                <% }) %>
-                <tr>
-                    <td colspan="2">Total</td>
-                    <td><%= totalMaxMarks %></td>
-                    <td><%= totalSelfApproved %></td>
-                    <td id="totalCommitteeScore"><%= totalCommitteeScore %></td>
-                    <td></td>
-                </tr>
-            </tbody>
-        </table>
-        <form id="saveForm" action="/committee/save-committee-scores" method="POST">
-            <input type="hidden" name="criteria_id" value="<%= criteriaId %>">
-            <input type="hidden" name="user_id" value="<%= userId %>">
-            <input type="hidden" name="appraisal_id" value="<%= appraisalId %>">
-            <% parameters.forEach(param => { %>
-                <input type="hidden" id="hidden_committee_score_<%= param.c_parameter_id %>" name="committee_score_<%= param.c_parameter_id %>" 
-                value="">
-            <% }); %>
-            <button type="submit" class="btn btn-save">Approved</button>
-        </form>
+                </thead>
+                <tbody>
+                    <% let totalMaxMarks = 0, totalSelfApproved = 0, totalCommitteeScore = 0; %>
+                    <% parameters.forEach((param, index) => { %>
+                        <% totalMaxMarks += param.parameter_max_marks; %>
+                        <% totalSelfApproved += param.marks_by_emp || 0; %>
+                        <% totalCommitteeScore += param.committeeScore !== 'Pending' ? param.committeeScore : 0; %>
+                        <tr>
+                            <td><%= index + 1 %></td>
+                            <td><%= param.parameter_description %></td>
+                            <td><%= param.parameter_max_marks %></td>
+                            <td><%= param.marks_by_emp || 'N/A' %></td>
+                            <td>
+                                <input type="number" class="committee-score" 
+                                       value="<%= param.marks_by_emp || 0 %>" 
+                                       min="0" max="<%= param.parameter_max_marks %>"
+                                       oninput="validateCommitteeScore(this)"
+                                       name="committee_score_<%= param.c_parameter_id %>">
+                            </td>
+                            <td>
+                                <% let paramDocs = documents.filter(doc => doc.c_parameter_id === param.c_parameter_id); %>
+                                <% if (paramDocs.length > 0) { %>
+                                    <% paramDocs.forEach(doc => { %>
+                                        <a href="/<%= doc.document_path %>" target="_blank" class="document-link">Document <%= doc.document_id %></a><br>
+                                    <% }); %>
+                                <% } else { %>
+                                    No documents
+                                <% } %>
+                            </td>
+                        </tr>
+                    <% }) %>
+                    <tr>
+                        <td colspan="2">Total</td>
+                        <td><%= totalMaxMarks %></td>
+                        <td><%= totalSelfApproved %></td>
+                        <td id="totalCommitteeScore"><%= totalCommitteeScore %></td>
+                        <td></td>
+                    </tr>
+                </tbody>
+            </table>
+            <form id="saveForm" action="/committee/save-committee-scores" method="POST">
+                <input type="hidden" name="criteria_id" value="<%= criteriaId %>">
+                <input type="hidden" name="user_id" value="<%= userId %>">
+                <input type="hidden" name="appraisal_id" value="<%= appraisalId %>">
+                <% parameters.forEach(param => { %>
+                    <input type="hidden" id="hidden_committee_score_<%= param.c_parameter_id %>" name="committee_score_<%= param.c_parameter_id %>" 
+                    value="">
+                <% }); %>
+                <button type="submit" class="btn btn-save">Approved</button>
+            </form>
+        </div>
     </div>
-</div>
     <script>
         document.getElementById('saveForm').addEventListener('submit', function() {
-    // Iterate through all committee score inputs
-    document.querySelectorAll('.committee-score').forEach(input => {
-        const paramId = input.name.replace('committee_score_', '');
-        // Update the corresponding hidden input value
-        document.getElementById(`hidden_committee_score_${paramId}`).value = input.value;
-    });
-});
+            document.querySelectorAll('.committee-score').forEach(input => {
+                const paramId = input.name.replace('committee_score_', '');
+                document.getElementById(`hidden_committee_score_${paramId}`).value = input.value;
+            });
+        });
 
         function copyScores() {
             const selfScores = document.querySelectorAll('td:nth-child(4)');
@@ -201,10 +199,10 @@
 
             if (isNaN(value) || value > maxScore) {
                 alert(`The committee score cannot exceed the max score ${maxScore}`);
-                input.value = ''; // Reset the input field
+                input.value = '';
             } else {
                 input.setCustomValidity('');
-                input.style.borderColor = ""; // Reset the box color
+                input.style.borderColor = ""; 
             }
 
             recalculateTotal();
@@ -221,13 +219,11 @@
 
             document.getElementById('totalCommitteeScore').innerText = total;
 
-            // Check if the total committee score exceeds the max score
             if (total > totalMaxMarks) {
                 alert(`The total committee score (${total}) cannot exceed the total max marks (${totalMaxMarks})`);
             }
         }
 
-        // Initialize the total on page load
         window.onload = recalculateTotal;
     </script>
 </body>

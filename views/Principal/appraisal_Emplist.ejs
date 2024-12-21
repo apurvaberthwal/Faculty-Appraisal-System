@@ -91,20 +91,26 @@
         }
     </style>
 </head>
-
 <body>
     <div class="container">
         <button class="back-button" onclick="window.location.href='/principal/appraisalReport'">Back</button>
         <h2>Appraisal Employee List</h2>
-        
+
+        <!-- Add buttons for download -->
+        <div class="button-container">
+            <button onclick="downloadEmployeeListCSV()">Download as CSV</button>
+            <button onclick="downloadEmployeeListPDF()">Download as PDF</button>
+        </div>
+
         <% if (error) { %>
             <div class="error-message"><%= error %></div>
         <% } else { %>
-            <table>
+            <table id="employee-table">
                 <thead>
                     <tr>
                         <th>Employee Name</th>
                         <th>Email</th>
+                        <th>Status</th>
                         <th>Self-Appraisal Marks</th>
                         <th>Final Marks</th>
                         <th>Total Grade</th>
@@ -116,9 +122,10 @@
                         <tr>
                             <td><%= employee.name %></td>
                             <td><%= employee.email_id %></td>
+                            <td><%= employee.appraisal_status %></td>
                             <td><%= employee.self_appraisal_marks || 'N/A' %></td>
-                            <td><%= employee.committee_member_score || 'N/A' %></td>
-                            <td><%= employee.total_grade || 'N/A' %></td>
+                            <td><%= employee.total_comm_score || 'N/A' %></td>
+                            <td><%= employee.grade || 'N/A' %></td>
                             <td>
                                 <button class="view-button" onclick="redirectToEmployeeReport('<%= employee.user_id %>')">View</button>
                             </td>
@@ -129,11 +136,72 @@
         <% } %>
     </div>
 
+    <!-- Add jsPDF and PapaParse CDN links -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.25/jspdf.plugin.autotable.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.3.0/papaparse.min.js"></script>
+
     <script>
         function redirectToEmployeeReport(employeeId) {
             // Redirect to employee-specific details page
-            window.location.href = `/principal/appraisal_emp_report/${employeeId}`;
+            window.location.href = `/principal/reports/<%= appraisal_id %>/${employeeId}`;
+        }
+
+        function downloadEmployeeListCSV() {
+            const table = document.getElementById("employee-table");
+            const rows = table.querySelectorAll("tr");
+            const csvData = [];
+
+            rows.forEach((row) => {
+                const cols = row.querySelectorAll("td, th");
+                const csvRow = [];
+                cols.forEach((col, index) => {
+                    let text = col.innerText;
+                    if (index < cols.length - 1) {
+                        csvRow.push(text); // Exclude the "View" button
+                    }
+                });
+                csvData.push(csvRow.join(","));
+            });
+
+            const csvString = csvData.join("\n");
+            const blob = new Blob([csvString], { type: "text/csv" });
+            const link = document.createElement("a");
+            link.href = URL.createObjectURL(blob);
+            link.download = "employee_list.csv";
+            link.click();
+        }
+
+        function downloadEmployeeListPDF() {
+            const { jsPDF } = window.jspdf;
+            const doc = new jsPDF();
+            const table = document.getElementById("employee-table");
+
+            doc.text("Appraisal Employee List", 20, 10);
+
+            const tableRows = [];
+            const tableHead = [['Employee Name', 'Email', 'Status', 'Self-Appraisal Marks', 'Final Marks', 'Total Grade']];
+
+            const rows = table.querySelectorAll("tbody tr");
+            rows.forEach((row) => {
+                const cols = row.querySelectorAll("td");
+                const rowData = [];
+                cols.forEach((col, colIndex) => {
+                    if (colIndex < cols.length - 1) { // Exclude the "View" button
+                        rowData.push(col.innerText);
+                    }
+                });
+                tableRows.push(rowData);
+            });
+
+            doc.autoTable({
+                head: tableHead,
+                body: tableRows
+            });
+
+            doc.save("employee_list.pdf");
         }
     </script>
 </body>
+
 </html>

@@ -200,7 +200,14 @@
                         </tbody>
                     </table>
                     <!-- Plus icon for Add Parameter -->
-                    <button class="add-parameter" onclick="toggleAddParameterForm('<%= criterion.criteria_id %>')">+</button>
+                    <button type="button" class="add-parameter" onclick="toggleAddParameterForm('<%= criterion.criteria_id %>')">+</button>
+                    
+                    <!-- Add Parameter Form -->
+                    <div id="addParameterForm_<%= criterion.criteria_id %>" style="display: none;">
+                        <input type="text" id="description_<%= criterion.criteria_id %>" placeholder="Parameter Description">
+                        <input type="number" id="marks_<%= criterion.criteria_id %>" placeholder="Total Marks">
+                        <button type="button" onclick="submitParameter('<%= criterion.criteria_id %>')">Add Parameter</button>
+                    </div>
                 </div>
             <% }) %>
 
@@ -209,39 +216,37 @@
                 <button type="button" id="nextBtn" class="button" onclick="nextStep(1)">Next</button>
                 <button type="submit" id="submitBtn" style="display: none;" class="button">Submit</button>
             </div>
-           
         </form>
     </div>
-   <!-- Modal for Popups -->
-   <div id="modal" class="modal">
-    <div class="modal-content">
-        <h3 id="modalMessage">Message</h3>
-        <button onclick="closeModal()">Close</button>
+    
+    <!-- Modal for Popups -->
+    <div id="modal" class="modal">
+        <div class="modal-content">
+            <h3 id="modalMessage">Message</h3>
+            <button onclick="closeModal()">Close</button>
+        </div>
     </div>
-</div>
+
     <script>
-
-
-
         function toggleAddParameterForm(criteriaId) {
-                    const form = document.getElementById(`addParameterForm_${criteriaId}`);
-                    if (form.style.display === 'none' || !form.style.display) {
-                        form.style.display = 'block';
-                    } else {
-                        form.style.display = 'none';
-                    }
-                }
-        
-                function submitParameter(criteriaId) {
+            const form = document.getElementById(`addParameterForm_${criteriaId}`);
+            if (form.style.display === 'none' || !form.style.display) {
+                form.style.display = 'block';
+            } else {
+                form.style.display = 'none';
+            }
+        }
+
+        function submitParameter(criteriaId) {
             const description = document.getElementById(`description_${criteriaId}`).value;
             const marks = document.getElementById(`marks_${criteriaId}`).value;
-        
+
             // Basic validation
             if (!description || !marks) {
                 alert('Please enter both description and marks.');
                 return;
             }
-        
+
             // Send AJAX request to add new parameter
             fetch('/principal/addParameter', {
                 method: 'POST',
@@ -265,7 +270,7 @@
                         <td>${description}</td>
                         <td>${marks}</td>
                         <td>
-                            <input type="checkbox" value="${data.newParameterId}" data-marks="${marks}">
+                            <input type="checkbox" value="${data.parameter_id}" data-marks="${marks}">
                         </td>
                     `;
                     table.appendChild(row);
@@ -276,118 +281,112 @@
                 alert('An error occurred while adding the parameter.');
             });
         }
-        
-        
-        
-        
-        
-        
-        
-                const steps = document.querySelectorAll('.step');
-                let currentStep = 0;
-                const appraisal_id = "<%= appraisalId %>";
-                const modal = document.getElementById('modal');
-                const modalMessage = document.getElementById('modalMessage');
-        
-                function showStep(step) {
-                    steps.forEach((s, index) => {
-                        s.style.display = index === step ? 'block' : 'none';
-                    });
-        
-                    // Show/hide navigation buttons
-                    document.getElementById('prevBtn').style.display = step === 0 ? 'none' : 'inline';
-                    document.getElementById('nextBtn').style.display = step === steps.length - 1 ? 'none' : 'inline';
-                    document.getElementById('submitBtn').style.display = step === steps.length - 1 ? 'inline' : 'none';
-                }
-        
-                function nextStep(n) {
-                    const selectedParameters = getSelectedParameters();
-                    if (n === 1 && !selectedParameters) return; // If moving forward, ensure parameters are selected
-        
-                    currentStep += n;
-                    if (currentStep < 0 || currentStep >= steps.length) return; // Prevent out of bounds
-                    showStep(currentStep);
-                }
-        
-                function getSelectedParameters() {
-                    const currentStepElement = steps[currentStep];
-                    if (!currentStepElement) {
-                        console.error('Current step element is undefined');
-                        return null;
-                    }
-        
-                    const checkboxes = currentStepElement.querySelectorAll('input[type="checkbox"]:checked');
-                    if (checkboxes.length === 0) {
-                        showModal('Please select at least one parameter.');
-                        return null; // Return null if no checkbox is selected
-                    }
-                    return Array.from(checkboxes).map(checkbox => ({
+
+        const steps = document.querySelectorAll('.step');
+        let currentStep = 0;
+        const appraisal_id = "<%= appraisalId %>";
+        const modal = document.getElementById('modal');
+        const modalMessage = document.getElementById('modalMessage');
+
+        function showStep(step) {
+            steps.forEach((s, index) => {
+                s.style.display = index === step ? 'block' : 'none';
+            });
+
+            // Show/hide navigation buttons
+            document.getElementById('prevBtn').style.display = step === 0 ? 'none' : 'inline';
+            document.getElementById('nextBtn').style.display = step === steps.length - 1 ? 'none' : 'inline';
+            document.getElementById('submitBtn').style.display = step === steps.length - 1 ? 'inline' : 'none';
+        }
+
+        function nextStep(n) {
+            const selectedParameters = getSelectedParameters();
+            if (n === 1 && !selectedParameters) return; // If moving forward, ensure parameters are selected
+
+            currentStep += n;
+            if (currentStep < 0 || currentStep >= steps.length) return; // Prevent out of bounds
+            showStep(currentStep);
+        }
+
+        function getSelectedParameters() {
+            const currentStepElement = steps[currentStep];
+            if (!currentStepElement) {
+                console.error('Current step element is undefined');
+                return null;
+            }
+
+            const checkboxes = currentStepElement.querySelectorAll('input[type="checkbox"]:checked');
+            if (checkboxes.length === 0) {
+                showModal('Please select at least one parameter.');
+                return null; // Return null if no checkbox is selected
+            }
+            return Array.from(checkboxes).map(checkbox => ({
+                c_parameter_id: checkbox.value,
+                criteria_id: currentStepElement.getAttribute('data-criteria-id'),
+                total_marks: checkbox.getAttribute('data-marks'),
+                appraisal_id: appraisal_id
+            }));
+        }
+
+        document.getElementById('parameterForm').addEventListener('submit', function(e) {
+            e.preventDefault(); // Prevent default form submission
+            const parameters = [];
+
+            // Collect selected parameters from all steps
+            steps.forEach(step => {
+                const checkboxes = step.querySelectorAll('input[type="checkbox"]:checked');
+                checkboxes.forEach(checkbox => {
+                    parameters.push({
                         c_parameter_id: checkbox.value,
-                        criteria_id: currentStepElement.getAttribute('data-criteria-id'),
+                        criteria_id: step.getAttribute('data-criteria-id'),
                         total_marks: checkbox.getAttribute('data-marks'),
                         appraisal_id: appraisal_id
-                    }));
-                }
-        
-                document.getElementById('parameterForm').addEventListener('submit', function(e) {
-                    e.preventDefault(); // Prevent default form submission
-                    const parameters = [];
-        
-                    // Collect selected parameters from all steps
-                    steps.forEach(step => {
-                        const checkboxes = step.querySelectorAll('input[type="checkbox"]:checked');
-                        checkboxes.forEach(checkbox => {
-                            parameters.push({
-                                c_parameter_id: checkbox.value,
-                                criteria_id: step.getAttribute('data-criteria-id'),
-                                total_marks: checkbox.getAttribute('data-marks'),
-                                appraisal_id: appraisal_id
-                            });
-                        });
-                    });
-        
-                    if (parameters.length === 0) {
-                        showModal('Please select at least one parameter before submitting.');
-                        return;
-                    }
-        
-                    // Make an AJAX request to submit parameters
-                    fetch('/principal/submitParameters', {
-                        method: 'POST',
-                        headers: {
-                            'Content-Type': 'application/json'
-                        },
-                        body: JSON.stringify({ parameters })
-                    })
-                    .then(response => {
-                        if (!response.ok) {
-                            throw new Error('Network response was not ok ' + response.statusText);
-                        }
-                        return response.json();
-                    })
-                    .then(data => {
-                        showModal(data.message);
-                        setTimeout(() => {
-                            window.location.href = data.redirectUrl;
-                        }, 2000);
-                    })
-                    .catch(error => {
-                        console.error('Error:', error);
-                        showModal('An error occurred while submitting parameters.');
                     });
                 });
-        
-                function showModal(message) {
-                    modalMessage.textContent = message;
-                    modal.style.display = 'flex';
+            });
+
+            if (parameters.length === 0) {
+                showModal('Please select at least one parameter before submitting.');
+                return;
+            }
+
+            // Make an AJAX request to submit parameters
+            fetch('/principal/submitParameters', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({ parameters })
+            })
+            .then(response => {
+                if (!response.ok) {
+                    throw new Error('Network response was not ok ' + response.statusText);
                 }
-        
-                function closeModal() {
-                    modal.style.display = 'none';
-                }
-        
-                // Show the first step initially
-                showStep(currentStep);
-            </script>
+                return response.json();
+            })
+            .then(data => {
+                showModal(data.message);
+                setTimeout(() => {
+                    window.location.href = data.redirectUrl;
+                }, 2000);
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                showModal('An error occurred while submitting parameters.');
+            });
+        });
+
+        function showModal(message) {
+            modalMessage.textContent = message;
+            modal.style.display = 'flex';
+        }
+
+        function closeModal() {
+            modal.style.display = 'none';
+        }
+
+        // Show the first step initially
+        showStep(currentStep);
+    </script>
 </body>
 </html>

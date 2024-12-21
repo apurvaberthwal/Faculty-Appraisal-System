@@ -1,0 +1,88 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Appraisal Detail</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 20px;
+        }
+        h1 {
+            text-align: center;
+        }
+        canvas {
+            max-width: 600px;
+            margin: 0 auto;
+        }
+    </style>
+</head>
+<body>
+    <h1>Appraisal Cycle: <%= appraisalData.appraisal_cycle_name %></h1>
+    <h2>Total Score: <%= appraisalData.total_score %></h2>
+
+    <canvas id="criteriaChart"></canvas>
+
+    <script>
+        // Dummy data for criteria
+        const criteriaData = [
+            { name: 'Criteria 1', filled: 3, score: 75, parameters: [10, 20, 30] },
+            { name: 'Criteria 2', filled: 5, score: 90, parameters: [20, 30, 40] },
+            { name: 'Criteria 3', filled: 2, score: 60, parameters: [5, 15, 25] },
+            { name: 'Criteria 4', filled: 4, score: 80, parameters: [15, 25, 35] }
+        ];
+
+        // Extracting labels and data for the pie chart
+        const labels = criteriaData.map(item => item.name);
+        const filledData = criteriaData.map(item => item.filled);
+
+        // Creating the pie chart
+        const ctx = document.getElementById('criteriaChart').getContext('2d');
+        const criteriaChart = new Chart(ctx, {
+            type: 'pie',
+            data: {
+                labels: labels,
+                datasets: [{
+                    label: 'Criteria Filled',
+                    data: filledData,
+                    backgroundColor: [
+                        'rgba(255, 99, 132, 0.2)',
+                        'rgba(54, 162, 235, 0.2)',
+                        'rgba(255, 206, 86, 0.2)',
+                        'rgba(75, 192, 192, 0.2)'
+                    ],
+                    borderColor: [
+                        'rgba(255, 99, 132, 1)',
+                        'rgba(54, 162, 235, 1)',
+                        'rgba(255, 206, 86, 1)',
+                        'rgba(75, 192, 192, 1)'
+                    ],
+                    borderWidth: 1
+                }]
+            },
+            options: {
+                responsive: true,
+                plugins: {
+                    legend: {
+                        position: 'top',
+                    },
+                    title: {
+                        display: true,
+                        text: 'Criteria Filled'
+                    }
+                },
+                onClick: (evt) => {
+                    const activePoints = criteriaChart.getElementsAtEventForMode(evt, 'nearest', { intersect: true }, false);
+                    if (activePoints.length) {
+                        const idx = activePoints[0].index;
+                        const selectedCriteria = criteriaData[idx];
+                        window.location.href = `/criteriaDetail/${encodeURIComponent(selectedCriteria.name)}`;
+                    }
+                }
+            }
+        });
+    </script>
+</body>
+</html>

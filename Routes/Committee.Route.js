@@ -110,163 +110,197 @@ router.use(authorizeRole('committee'));
 
 router.get("/reports/:appraisal_id", async (req, res) => {
     const institution_id = req.user.institution_id;
-    const appraisal_id = req.params.appraisal_id; // Get appraisal_id from URL parameter
+    const appraisal_id = req.params.appraisal_id;
     console.log("institution_id", institution_id);
     console.log("appraisal_id", appraisal_id);
 
     try {
-        const user_idQuery = 
-              `SELECT user_id
-               FROM user_master
-               WHERE user_type_id = ?`;
-        
+        const user_idQuery = `
+            SELECT user_id
+            FROM user_master
+            WHERE user_type_id = ?;
+        `;
         const user_idResult = await facultyDb.query(user_idQuery, [req.user.user_id]);
-        console.log("user_idResult", user_idResult)
+        console.log("user_idResult", user_idResult);
         const user_id = user_idResult[0][0].user_id;
-      console.log("user_id", user_id)
+        console.log("user_id", user_id);
+
         const committeeQuery = `
-            SELECT committee_id 
-            FROM committee_member_master 
+            SELECT committee_id
+            FROM committee_member_master
             WHERE appraisal_id = ? AND institution_id = ? AND user_id = ?;
         `;
         const [committeeMembers] = await facultyDb.query(committeeQuery, [appraisal_id, institution_id, user_id]);
-        
-        // Check if there are any committee members
+        console.log(committeeMembers);
         if (committeeMembers.length === 0) {
             res.render("./Committee/report", { employees: [], error: "No committee members found for this appraisal.", appraisal_id: appraisal_id });
             return;
         }
 
-        const committeeMemberId = committeeMembers[0].committee_id; // Fetch the committee ID of the first member
+        const committeeMemberId = committeeMembers[0].committee_id;
         console.log("committeeMemberId", committeeMemberId);
 
+        // Fetch employees and their scores
         const employeeQuery = `
-        SELECT
-            u.user_id,
-            u.email_id,
-            u.emp_id,
-            CONCAT(u.first_name, ' ', u.last_name) AS name,
-            d.department_name,
-            COUNT(DISTINCT cp.criteria_id) AS criteria_applied,
-            total_criteria.total AS total_criteria,
-            CASE
-                WHEN COUNT(DISTINCT cp.criteria_id) = total_criteria.total THEN 'Fully filled'
-                WHEN COUNT(DISTINCT cp.criteria_id) > 0 THEN 'Partially filled'
-                ELSE 'Not filled'
-            END AS appraisal_status
-        FROM
-            user_master u
-        JOIN department_master d ON u.dept_id = d.dept_id
-        LEFT JOIN self_appraisal_score_master sasm ON u.user_id = sasm.user_id
-            AND sasm.status = 'active' AND sasm.appraisal_id = ? 
-        LEFT JOIN c_parameter_master cp ON sasm.c_parameter_id = cp.c_parameter_id
-        LEFT JOIN (
             SELECT
-                appraisal_id,
-                COUNT(DISTINCT criteria_id) AS total
+                u.user_id,
+                u.email_id,
+                u.emp_id,
+                CONCAT(u.first_name, ' ', u.last_name) AS name,
+                d.department_name,
+                MAX(sasm.marks_by_emp) AS self_appraisal_marks,
+                cms.total_comm_score,
+                COUNT(DISTINCT cp.criteria_id) AS criteria_applied,
+                MAX(total_criteria.total) AS total_criteria,
+                CASE
+                    WHEN MAX(sasm.status) = 'active' THEN 'Fully filled'
+                    WHEN MAX(sasm.status) = 'inactive' THEN 'Partially filled'
+                    ELSE 'Not filled'
+                END AS appraisal_status
             FROM
-                apprisal_criteria_parameter_master 
+                user_master u
+            JOIN department_master d ON u.dept_id = d.dept_id
+            LEFT JOIN self_appraisal_score_master sasm ON u.user_id = sasm.user_id
+                AND sasm.appraisal_id = ?
+            LEFT JOIN (
+                SELECT
+                    user_id_employee,
+                    appraisal_id,
+                    SUM(comm_score) AS total_comm_score
+                FROM
+                    committee_master
+                WHERE
+                    appraisal_id = ?
+                GROUP BY
+                    user_id_employee, appraisal_id
+            ) cms ON u.user_id = cms.user_id_employee
+            LEFT JOIN c_parameter_master cp ON sasm.c_parameter_id = cp.c_parameter_id
+            LEFT JOIN (
+                SELECT
+                    appraisal_id,
+                    COUNT(DISTINCT criteria_id) AS total
+                FROM
+                    apprisal_criteria_parameter_master
+                WHERE
+                    appraisal_id = ?
+                GROUP BY
+                    appraisal_id
+            ) total_criteria ON sasm.appraisal_id = total_criteria.appraisal_id
             WHERE
-                appraisal_id = ? 
+                u.institution_id = ?
             GROUP BY
-                appraisal_id
-        ) total_criteria ON sasm.appraisal_id = total_criteria.appraisal_id
-        WHERE
-            u.institution_id = ? 
-            AND u.user_id IN (
-                SELECT user_id 
-                FROM appraisal_members 
-                WHERE appraisal_id = ? AND committee_id = ?
-            )
-        GROUP BY
-            u.user_id, u.emp_id, u.first_name, u.last_name, d.department_name, u.email_id, total_criteria.total;
-    `;
-    
-    const [rows] = await facultyDb.query(employeeQuery, [appraisal_id, appraisal_id, institution_id, appraisal_id, committeeMemberId]);
-    
-        if (rows.length === 0) {
+                u.user_id,
+                u.email_id,
+                u.emp_id,
+                u.first_name,
+                u.last_name,
+                d.department_name,
+                cms.total_comm_score
+            ORDER BY 
+                u.user_id;
+        `;
+        const [employees] = await facultyDb.query(employeeQuery, [appraisal_id, appraisal_id, appraisal_id, institution_id]);
+        console.log("Employees Data:", employees);
+
+        if (employees.length === 0) {
             res.render("./Committee/report", { employees: [], error: "No employees found for the assigned committee member.", appraisal_id: appraisal_id });
             return;
         }
 
-        console.log(rows);
-        res.render("./Committee/report", { employees: rows, appraisal_id: appraisal_id });
+        // Fetch grades separately
+        const gradeQuery = `
+            SELECT grade_title, min_marks, max_marks
+            FROM grade_master
+            WHERE appraisal_id = ? AND status = 'active';
+        `;
+        const [grades] = await facultyDb.query(gradeQuery, [appraisal_id]);
+        console.log("Grades Data:", grades);
+
+        // Map grades to employees
+        employees.forEach(employee => {
+            const score = employee.total_comm_score || 0; // Default to 0 if null
+            const grade = grades.find(g => score >= parseFloat(g.min_marks) && score <= parseFloat(g.max_marks));
+            if (score === 0) {
+                employee.total_grade = "N/A"; // No score filled
+            } else {
+                employee.total_grade = grade ? grade.grade_title : "No Grade"; // Assign grade or default
+            }
+        });
+
+        console.log(employees);
+        res.render("./Committee/report", { employees, appraisal_id });
     } catch (err) {
         console.error(err);
         res.status(500).send("Server Error");
     }
 });
 
+
 router.get('/reports/:appraisal_id/:user_id', async (req, res) => {
     console.log("criteria-status");
     const successMsg = req.query.message || "";
     const userId = req.params.user_id;  // Get user ID from route parameters
     const appraisal_id = req.params.appraisal_id; // Get appraisal ID from route parameters
-    console.log(userId,appraisal_id)
+    console.log(userId, appraisal_id);
+
     if (!userId) {
         console.error('User ID is missing in the request.');
         return res.status(400).send('User ID is required.');
     }
 
     try {
-        // SQL query to get criteria status and actions including review status
-        const query2 = `
-            SELECT 
-                c.criteria_id AS 'Criteria Number',
-                c.criteria_description AS 'Criteria Name',
-                CASE
-                    WHEN EXISTS (
-                        SELECT 1
-                        FROM self_appraisal_score_master sas
-                        JOIN apprisal_criteria_parameter_master acp ON sas.c_parameter_id = acp.c_parameter_id
-                        WHERE sas.user_id = ? 
-                        AND sas.record_id IS NOT NULL
-                        AND sas.appraisal_id = ?
-                        AND acp.criteria_id = c.criteria_id
-                    ) THEN 'Applied'
-                    ELSE 'Not Applied'
-                END AS 'Self-Appraisal Status',
-                CASE
-                    WHEN EXISTS (
-                        SELECT 1
-                        FROM committee_master cm
-                        JOIN apprisal_criteria_parameter_master acp ON cm.c_parameter_id = acp.c_parameter_id
-                        WHERE cm.user_id_employee = ? 
-                        AND cm.status = 'active'
-                        AND acp.criteria_id = c.criteria_id
-                        AND cm.appraisal_id = ?
-                    ) THEN 'Reviewed'
-                    ELSE 'Not Reviewed'
-                END AS 'Committee Status'
-            FROM criteria_master c
-            LEFT JOIN apprisal_criteria_parameter_master acp
-                ON c.criteria_id = acp.criteria_id
-            LEFT JOIN appraisal_master am
-                ON acp.appraisal_id = am.appraisal_id
-            WHERE c.status = 'active'
-              AND am.status = 'active'
-              AND am.appraisal_id = ?
-            GROUP BY c.criteria_id, c.criteria_description
-            ORDER BY c.criteria_id;
-        `;
+        // SQL query to get criteria status, actions, and marks
+        const query = `
+        SELECT 
+            c.criteria_id AS 'Criteria Number',
+            c.criteria_description AS 'Criteria Name',
+            CASE
+                WHEN MAX(sas.record_id) IS NOT NULL THEN 'Applied'
+                ELSE 'Not Applied'
+            END AS 'Self-Appraisal Status',
+            MAX(sas.marks_by_emp) AS 'Self-Approved Marks',
+            CASE
+                WHEN MAX(cm.status) = 'active' THEN 'Reviewed'
+                ELSE 'Not Reviewed'
+            END AS 'Committee Status',
+            MAX(cm.comm_score) AS 'Committee Marks'
+        FROM criteria_master c
+        LEFT JOIN apprisal_criteria_parameter_master acp 
+            ON c.criteria_id = acp.criteria_id
+        LEFT JOIN appraisal_master am 
+            ON acp.appraisal_id = am.appraisal_id
+        LEFT JOIN self_appraisal_score_master sas 
+            ON sas.c_parameter_id = acp.c_parameter_id 
+            AND sas.user_id = ? 
+            AND sas.appraisal_id = ?
+        LEFT JOIN committee_master cm 
+            ON cm.c_parameter_id = acp.c_parameter_id 
+            AND cm.user_id_employee = ? 
+            AND cm.appraisal_id = ? 
+            AND cm.status = 'active'
+        WHERE c.status = 'active'
+          AND am.status = 'active'
+          AND am.appraisal_id = ?
+        GROUP BY c.criteria_id, c.criteria_description
+        ORDER BY c.criteria_id;
+    `;
+    
+    const results = await facultyDb.query(query, [userId, appraisal_id, userId, appraisal_id, appraisal_id]);
+    
+        console.log('Criteria Results:', results[0]);
 
-        // Execute the query with the user ID and appraisal ID
-        const results2 = await facultyDb.query(query2, [userId, appraisal_id, userId, appraisal_id, appraisal_id]);
-        console.log('Criteria Results:', results2[0]);
-
-        if (results2.length === 0) {
+        if (results.length === 0) {
             console.log('No criteria data found');
         }
 
         // Render the results in the view
-        res.render('./Committee/criteria-status', { userId, data: results2, successMsg ,appraisal_id:appraisal_id});
+        res.render('./Committee/criteria-status', { userId, data: results, successMsg, appraisal_id });
 
     } catch (err) {
         console.error(err);
         res.status(500).send('Server error');
     }
 });
-
 
 
 router.post("/report/review", async (req, res) => {
@@ -313,143 +347,56 @@ router.post("/report/review", async (req, res) => {
 });
 
 router.post("/save-committee-scores", async (req, res) => {
-    const appraisal_id = req.body.appraisal_id;
-    console.log("appraisal_id", appraisal_id);
-        const { criteria_id, user_id, ...committeeScores } = req.body;
-        console.log(req.user.user_id);
-        let commid;  // Define commid here
-    
-        try {
-            const committeeQuery = 
-              `  SELECT user_id
-                FROM user_master
-                WHERE user_type_id = ?`
-            ;
-            const committeeResult = await facultyDb.query(committeeQuery, [req.user.user_id]);
-            console.log("committeeResult", committeeResult);  // Add this line
-        
-            if (committeeResult.length > 0) {  // Add this check
-                commid = committeeResult[0][0].user_id;
-                console.log("committee",commid);
-            } else {
-                console.log("No results from committee query");
-            }
-        } catch (err) {
-            console.error('Error fetching committee members:', err);
-            return res.status(500).send('Error retrieving committee members.');
-        }    
-    
-        // Input validation
-        if (!criteria_id || !user_id) {
-            console.error('Invalid input: criteria_id or user_id is missing');
-            return res.status(400).send('Invalid input: criteria_id and user_id are required.');
+    const { appraisal_id, criteria_id, user_id, ...committeeScores } = req.body;
+    console.log(committeeScores)
+    try {
+        // Fetch committee ID
+        const [committeeResult] = await facultyDb.query(`
+            SELECT user_id FROM user_master WHERE user_type_id = ?`, [req.user.user_id]);
+
+        if (!committeeResult.length) {
+            return res.status(404).send("Committee not found.");
         }
-    
+
+        const commid = committeeResult[0].user_id;
+
         const scores = [];
-    
-        console.log('Received committee scores:', committeeScores);
-    
-        // Extract all committee scores from the request body
         for (const [key, value] of Object.entries(committeeScores)) {
-            if (key.startsWith('committee_score_')) {
-                const c_parameter_id = key.replace('committee_score_', '');
+            if (key.startsWith("committee_score_")) {
+                const c_parameter_id = key.replace("committee_score_", "");
                 const score = parseInt(value, 10);
-    
-                if (isNaN(score) || score < 0) {
-                    console.error(`Invalid score value for parameter ${c_parameter_id}: ${value}`);
-                    return res.status(400).send(`Invalid score value for parameter ${c_parameter_id}.`);
-                }
-    
-                // Retrieve the record_id for the given user_id, c_parameter_id, and criteria_id
-                let record_id;
-                try {
-                    const recordQuery = `
-                        SELECT record_id
-                        FROM self_appraisal_score_master
-                        WHERE user_id = ? AND c_parameter_id = ? AND status = 'active'
-                    `;
-                    const [recordResult] = await facultyDb.query(recordQuery, [user_id, c_parameter_id, criteria_id]);
-    
-                    console.log(`Record query result for user_id: ${user_id}, c_parameter_id: ${c_parameter_id}, criteria_id: ${criteria_id}:`, recordResult);
-    
-                    if (recordResult.length === 0) {
-                        console.error(`Record ID not found for user_id: ${user_id}, c_parameter_id: ${c_parameter_id}, criteria_id: ${criteria_id}`);
-                        continue;  // Skip this parameter
-                    }
-                    record_id = recordResult[0].record_id;
-                    console.log(`Retrieved record_id for parameter ${c_parameter_id}: ${record_id}`);
-                } catch (err) {
-                    console.error('Error fetching record ID:', err);
-                    return res.status(500).send('Error retrieving record ID.');
-                }
-    
-                // Print parameter_id and committee_score
-                console.log(`parameter_id: ${c_parameter_id}, committee_score: ${score}`);
-    
-                // Check if the record already exists
-                try {
-                    const checkQuery = `
-                        SELECT COUNT(*) AS count
-                        FROM committee_master
-                        WHERE record_id = ? AND user_id_committee = ?
-                    `;
-                    const [checkResult] = await facultyDb.query(checkQuery, [record_id, user_id]);
-    
-                    if (checkResult[0].count === 0) {
-                        // Prepare values for insertion if record does not exist
-                        scores.push([
-                           commid ,        // user_id_committee
-                            user_id,        // user_id_employee
-                            record_id,      // record_id
-                            c_parameter_id, // c_parameter_id
-                            score,
-                            appraisal_id          // comm_score
-                        ]);
-                    } else {
-                        console.log(`Record already exists for record_id: ${record_id}`);
-                    }
-                } catch (err) {
-                    console.error('Error checking for existing record:', err);
-                    return res.status(500).send('Error checking for existing records.');
-                }
+
+                if (isNaN(score) || score < 0) continue;
+
+                const [recordResult] = await facultyDb.query(`
+                    SELECT record_id FROM self_appraisal_score_master 
+                    WHERE user_id = ? AND c_parameter_id = ?  AND status = 'active'`,
+                    [user_id, c_parameter_id]);
+
+                if (!recordResult.length) continue;
+
+                const record_id = recordResult[0].record_id;
+
+                // Directly push the scores without checking
+                scores.push([commid, user_id, record_id, c_parameter_id, score, appraisal_id]);
             }
         }
-    
-        console.log('Prepared scores for insertion:', scores);
-    
-        if (scores.length === 0) {
-            console.error('No valid committee scores provided.');
-            return res.status(400).send('No valid committee scores provided.');
-        }
-    
-        // Insert scores
-        try {
-            const insertQuery = `
-                INSERT INTO committee_master (user_id_committee, user_id_employee, record_id, c_parameter_id, comm_score,appraisal_id)
-                VALUES (?)
-            `;
-          
-            for (const score of scores) {
-                try {
-                    const [insertResult] = await facultyDb.query(insertQuery, [score]);
-                    console.log('Insert result:', insertResult);
-                } catch (err) {
-                    if (err.code === 'ER_DUP_ENTRY') {
-                        console.log('Duplicate entry, skipping:', score);
-                    } else {
-                        throw err;  // Rethrow the error if it's not a duplicate entry error
-                    }
-                }
-            }
-    
-            // Redirect to criteria status with userId and success message
-            res.redirect(`/committee/criteria-Status?user_id=${user_id}&message=Successfully%20added%20review`);
-        } catch (err) {
-            console.error('Error inserting committee scores:', err);
-            res.status(500).send('Error saving committee scores.');
-        }
-    });
-    
+        console.log(scores)
+        if (!scores.length) return res.status(400).send("No scores to save.");
+
+        const insertQuery = `
+            INSERT INTO committee_master (user_id_committee, user_id_employee, record_id, c_parameter_id, comm_score, appraisal_id)
+            VALUES ?`;
+
+        await facultyDb.query(insertQuery, [scores]);
+
+        res.redirect(`/committee/reports/${appraisal_id}/${user_id}?message=Scores%20saved.`);
+    } catch (err) {
+        console.error(err);
+        res.status(500).send("Error saving committee scores.");
+    }
+});
+
 
 router.get('/logout', (req, res) => {
     res.clearCookie('token');

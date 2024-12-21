@@ -1071,9 +1071,13 @@ router.get("/grade", async (req, res) => {
     try {
         // Get appraisal_id and total_marks from the request query parameters
         const { appraisal_id, total_marks } = req.query;
-
+        const appraisalSql = `SELECT appraisal_cycle_name FROM appraisal_master WHERE appraisal_id = ?`;
+        const [appraisalCycleRows] = await facultyDb.execute(appraisalSql, [appraisal_id]); // Use appraisalId her
+        
+        const appraisal_cycle_name = appraisalCycleRows[0].appraisal_cycle_name ///
+        console.log(appraisal_cycle_name)
         // Pass appraisal_id and total_marks to the grade view
-        res.render("./principal/grade", { appraisal_id, total_marks });
+        res.render("./principal/grade", { appraisal_id, total_marks,appraisal_cycle_name });
     } catch (error) {
         console.error(error);
         res.status(500).send('Server Error');
@@ -1139,7 +1143,7 @@ router.post('/add-parameter', (req, res) => {
             console.error('Error inserting new parameter:', err);
             return res.status(500).json({ error: 'Database error inserting parameter.' });
         }
-
+        console.log(result.insertId)
         res.json({ message: 'Parameter added successfully.', parameter_id: result.insertId });
     });
 });
@@ -1150,11 +1154,21 @@ router.post('/add-parameter', (req, res) => {
 router.get("/criteriaMarks/:appraisal_id", async (req, res) => {
     const appraisal_id = req.params.appraisal_id;
 
+
+
+
+
     try {
-        // SQL query to fetch criteria data based on the appraisal_id
+        const appraisalSql = `SELECT appraisal_cycle_name FROM appraisal_master WHERE appraisal_id = ?`;
+        const [appraisalCycleRows] = await facultyDb.execute(appraisalSql, [appraisal_id]); // Use appraisalId her
+        
+        const appraisal_cycle_name = appraisalCycleRows[0].appraisal_cycle_name ///
+        console.log(appraisal_cycle_name)
+        // Fetch criteria-level data
         const [criteriaData] = await facultyDb.query(`
             SELECT 
-                cm.criteria_id AS criteria_name,
+                cm.criteria_id,
+                cm.criteria_description AS criteria_name,
                 COUNT(acp.c_parameter_id) AS total_parameters,
                 SUM(acp.total_marks) AS total_marks
             FROM 
@@ -1167,13 +1181,44 @@ router.get("/criteriaMarks/:appraisal_id", async (req, res) => {
                 cm.criteria_id
         `, [appraisal_id]);
 
-        // Render the criteriaMarks EJS template with the fetched criteriaData
-        res.render("./principal/criteriaMarks", { criteriaData ,appraisal_id});
+        // Render the main template with criteria-level data
+        res.render("./principal/criteriaMarks", { criteriaData, appraisal_id ,appraisal_cycle_name});
     } catch (error) {
         console.error('Error fetching criteria data:', error);
         res.status(500).send('Server Error');
     }
 });
+
+// New API route to fetch parameter-level data dynamically
+router.get("/criteriaParameters/:criteria_id/:appraisal_id", async (req, res) => {
+    const { criteria_id, appraisal_id } = req.params;
+
+    try {
+    const [parameterData] = await facultyDb.query(`
+        SELECT 
+            acp.c_parameter_id, 
+            acp.total_marks AS parameter_marks,
+            acp.criteria_id,
+            cpm.parameter_description
+        FROM 
+            apprisal_criteria_parameter_master acp
+        LEFT JOIN 
+            c_parameter_master cpm ON acp.c_parameter_id = cpm.c_parameter_id
+        WHERE 
+            acp.criteria_id = ? 
+            AND acp.appraisal_id = ? 
+            AND acp.status = 'active';
+    `, [criteria_id, appraisal_id]);
+    
+   
+        console.log(parameterData)
+        res.json({ parameterData });
+    } catch (error) {
+        console.error('Error fetching parameter data:', error);
+        res.status(500).send('Server Error');
+    }
+});
+
 
 const insertIntoAppraisalDepartments = async (appraisalId, departmentId, institutionId) => {
     try {
@@ -1457,8 +1502,6 @@ router.get("/appraisalReport", async (req, res) => {
 router.get("/reports/:appraisal_id", async (req, res) => {
     const institution_id = req.user.institution_id;
     const appraisal_id = req.params.appraisal_id;
-    console.log("institution_id", institution_id);
-    console.log("appraisal_id", appraisal_id);
 
     try {
         const query = `
@@ -1468,62 +1511,90 @@ router.get("/reports/:appraisal_id", async (req, res) => {
             u.emp_id,
             CONCAT(u.first_name, ' ', u.last_name) AS name,
             d.department_name,
-            sasm.marks_by_emp AS self_appraisal_marks,
-            cms.comm_score AS committee_member_score,
-            gm.grade_title AS total_grade,
+            SUM(sasm.marks_by_emp) AS self_appraisal_marks,
+            cms.total_comm_score,
             COUNT(DISTINCT cp.criteria_id) AS criteria_applied,
-            MAX(total_criteria.total) AS total_criteria,  -- Use MAX or SUM to handle aggregation
+            MAX(total_criteria.total) AS total_criteria,
             CASE
-                WHEN COUNT(DISTINCT cp.criteria_id) = MAX(total_criteria.total) THEN 'Fully filled'
-                WHEN COUNT(DISTINCT cp.criteria_id) > 0 THEN 'Partially filled'
+                WHEN MAX(sasm.status) = 'active' THEN 'Fully filled'
+                WHEN MAX(sasm.status) = 'inactive' THEN 'Partially filled'
                 ELSE 'Not filled'
             END AS appraisal_status
         FROM
             user_master u
         JOIN department_master d ON u.dept_id = d.dept_id
         LEFT JOIN self_appraisal_score_master sasm ON u.user_id = sasm.user_id
-            AND sasm.status = 'active' AND sasm.appraisal_id = ?  
-        LEFT JOIN committee_master cms ON u.user_id = cms.user_id_employee
-            AND cms.appraisal_id = ?  
+            AND sasm.appraisal_id = ?
+        LEFT JOIN (
+            SELECT
+                user_id_employee,
+                appraisal_id,
+                SUM(comm_score) AS total_comm_score
+            FROM
+                committee_master
+            WHERE
+                appraisal_id = ?
+            GROUP BY
+                user_id_employee, appraisal_id
+        ) cms ON u.user_id = cms.user_id_employee
         LEFT JOIN c_parameter_master cp ON sasm.c_parameter_id = cp.c_parameter_id
         LEFT JOIN (
             SELECT
                 appraisal_id,
                 COUNT(DISTINCT criteria_id) AS total
             FROM
-                apprisal_criteria_parameter_master 
+                apprisal_criteria_parameter_master
             WHERE
-                appraisal_id = ?  
+                appraisal_id = ?
             GROUP BY
                 appraisal_id
         ) total_criteria ON sasm.appraisal_id = total_criteria.appraisal_id
-        LEFT JOIN grade_master gm ON 
-            cms.comm_score >= gm.min_marks 
-            AND cms.comm_score <= gm.max_marks  
         WHERE
-            u.institution_id = ?  -- Use dynamic institution_id
+            u.institution_id = ?
         GROUP BY
-            u.user_id, 
-            u.email_id, 
-            u.emp_id, 
-            u.first_name, 
-            u.last_name, 
-            d.department_name, 
-            sasm.marks_by_emp, 
-            cms.comm_score,      
-            gm.grade_title;  -- Ensure correct grouping
-    `;
-    
-        const [rows] = await facultyDb.query(query, [appraisal_id, appraisal_id, appraisal_id, institution_id]);
-        console.log("Employees Data:", rows);
-        
-        if (rows.length === 0) {
+            u.user_id,
+            u.email_id,
+            u.emp_id,
+            u.first_name,
+            u.last_name,
+            d.department_name,
+            cms.total_comm_score
+        ORDER BY 
+            u.user_id;
+        `;
+
+        const [employees] = await facultyDb.query(query, [appraisal_id, appraisal_id, appraisal_id, institution_id]);
+
+        if (employees.length === 0) {
             res.render("./principal/report", { employees: [], error: "No data found.", appraisal_id: appraisal_id });
             return;
         }
 
-        res.render("./principal/appraisal_Emplist", { employees: rows, appraisal_id: appraisal_id, error: "" });
-    } catch (err) {
+        // Fetch grades separately
+const gradeQuery = `
+SELECT grade_title, min_marks, max_marks
+FROM grade_master
+WHERE appraisal_id = ? AND status = 'active';
+`;
+const [grades] = await facultyDb.query(gradeQuery, [appraisal_id]);
+console.log(grades);
+
+// Map grades to employees
+employees.forEach(employee => {
+    const score = employee.total_comm_score; // Use as-is without defaulting to 0
+    if (score === null || score === 0) {
+        // Assign "N/A" if no score is available or score is 0
+        employee.grade = "N/A";
+    } else {
+        // Find grade based on the score range
+        const grade = grades.find(g => score >= parseFloat(g.min_marks) && score <= parseFloat(g.max_marks));
+        employee.grade = grade ? grade.grade_title : "No Grade";
+    }
+});
+console.log(employees);
+
+res.render("./principal/appraisal_Emplist", { employees, appraisal_id, error: "" });
+  } catch (err) {
         console.error(err);
         res.status(500).send("Server Error");
     }
@@ -1536,31 +1607,96 @@ router.get('/logout', (req, res) => {
     res.redirect('/principal/login')});
 
 // Route to show detailed employee appraisal report
-router.get('/appraisal_emp_report/:employeeId', (req, res) => {
-    const employeeId = req.params.employeeId;
-    
-    // Fetch employee details and appraisal report data for the given employeeId
-   /* const employee = getEmployeeById(employeeId);  // Fetch the employee's basic info
-    const appraisalCycle = getAppraisalCycleByEmployeeId(employeeId);  // Get the appraisal cycle name
-    const appraisalCriteria = getAppraisalCriteriaByEmployeeId(employeeId);  // Fetch criteria, parameters, and marks */
-    const employee = "USR1"
-    const appraisalCycle = "Appraisal Cycle 1"
-    const appraisalCriteria = [
-        { criteria_name: 'Quality of Work', parameters: 'Accuracy, Timeliness', self_marks: 80, obtained_marks: 85 },
-        { criteria_name: 'Teamwork', parameters: 'Collaboration, Support', self_marks: 75, obtained_marks: 78 },
-        { criteria_name: 'Initiative', parameters: 'Problem Solving, Leadership', self_marks: 85, obtained_marks: 90 },
-    ];
+router.get('/reports/:appraisal_id/:employeeId', async (req, res) => {
+    const { appraisal_id, employeeId } = req.params;
 
-    res.render('./principal/appraisal_emp_report', {
-        employee: employee || { name: "Pratksha Mane" },  // Example name for the employee
-        appraisal_cycle_name: appraisalCycle.name || "Mid-Year 2024",
-        total_grade: appraisalCycle.total_grade || "A",
-        appraisalCriteria: appraisalCriteria || [
-            { criteria_name: 'Quality of Work', parameters: 'Accuracy, Timeliness', self_marks: 80, obtained_marks: 85 },
-            { criteria_name: 'Teamwork', parameters: 'Collaboration, Support', self_marks: 75, obtained_marks: 78 },
-            { criteria_name: 'Initiative', parameters: 'Problem Solving, Leadership', self_marks: 85, obtained_marks: 90 },
-        ]
-    });
+    try {
+        // Fetch appraisal details from appraisal_master
+        const [appraisal] = await facultyDb.query(
+            "SELECT * FROM appraisal_master WHERE appraisal_id = ?", 
+            [appraisal_id]
+        );
+
+        if (appraisal.length === 0) {
+            return res.status(404).send("Appraisal not found");
+        }
+
+        const appraisalCycle = appraisal[0]; // e.g., "Appraisal Cycle 1"
+
+        // Fetch distinct criteria for the appraisal
+        const [criteriaDetails] = await facultyDb.query(
+            `SELECT DISTINCT 
+                cm.criteria_id,
+                cm.criteria_description AS criteria_name
+             FROM 
+                apprisal_criteria_parameter_master acpm
+             JOIN criteria_master cm ON acpm.criteria_id = cm.criteria_id
+             WHERE 
+                acpm.appraisal_id = ?`,
+            [appraisal_id]
+        );
+
+        // For each criterion, fetch its parameters, committee scores, and self-appraisal score
+        const appraisalCriteria = await Promise.all(criteriaDetails.map(async (criterion) => {
+            const [parameters] = await facultyDb.query(
+                `SELECT 
+                    cpm.parameter_description AS parameter_description,
+                    coms.comm_score AS committee_score,  -- Committee score
+                    sasm.marks_by_emp AS self_score      -- Self-appraisal score
+                 FROM 
+                    apprisal_criteria_parameter_master acpm
+                 JOIN c_parameter_master cpm ON acpm.c_parameter_id = cpm.c_parameter_id
+                 LEFT JOIN committee_master coms ON coms.user_id_employee = ? 
+                     AND coms.appraisal_id = acpm.appraisal_id 
+                     AND acpm.c_parameter_id = coms.c_parameter_id
+                 LEFT JOIN self_appraisal_score_master sasm ON sasm.user_id = ? 
+                     AND sasm.appraisal_id = acpm.appraisal_id 
+                     AND acpm.c_parameter_id = sasm.c_parameter_id
+                 WHERE 
+                    acpm.appraisal_id = ? AND acpm.criteria_id = ?`,
+                [employeeId, employeeId, appraisal_id, criterion.criteria_id]
+            );
+        
+            return {
+                criteria_name: criterion.criteria_name,
+                parameters: parameters.length ? parameters.map(param => ({
+                    parameter_description: param.parameter_description,
+                    committee_score: param.committee_score || "N/A",  // Default to "N/A" if null
+                    self_score: param.self_score || "N/A"             // Default to "N/A" if null
+                })) : null
+            };
+        }));
+
+        console.log(appraisalCriteria);
+
+        // Render the page with data from the queries
+        res.render('./principal/appraisal_emp_report', {
+            employee: { name: "Employee Name" }, // Replace with actual employee data
+            appraisal_cycle_name: appraisalCycle.appraisal_cycle_name,
+            total_grade: appraisalCycle.total_grade || "A",
+            appraisalCriteria: appraisalCriteria
+        });
+    } catch (error) {
+        console.error("Error fetching appraisal report:", error);
+        res.status(500).send("Internal Server Error");
+    }
 });
+
+
+// Assuming you already have a connection to the database
+
+router.get('/appraisalDetail', async (req, res) => {
+    const appraisalId = req.params.id;
+
+    // Dummy data for the demonstration
+    const appraisalData = {
+        appraisal_cycle_name: 'Quarterly Appraisal - Q3 2024',
+        total_score: 320 // Sample total score
+    };
+
+    // Render the appraisalDetail page with dummy data
+    res.render('./principal/appraisalDetail', { appraisalData });
+});
+
 
 export default router;

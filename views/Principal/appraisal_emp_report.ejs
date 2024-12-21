@@ -103,99 +103,43 @@
 
         <!-- Employee Details Section -->
         <div class="employee-details">
-            <p><strong>Employee Name:</strong> Pratiksha Mane</p>
-            <p><strong>Appraisal Cycle:</strong> Mid-Year 2024</p>
-            <p><strong>Total Grade:</strong> A</p>
+            <p><strong>Employee Name:</strong> <%= employee.name || "Default Employee" %></p>
+            <p><strong>Appraisal Cycle:</strong> <%= appraisal_cycle_name %></p>
+            <p><strong>Total Grade:</strong> <%= total_grade %></p>
         </div>
 
-        <!-- Separate Table for Each Criterion -->
-        <h3>Criteria 1: Quality of Work</h3>
-        <table>
-            <thead>
-                <tr>
-                    <th>Sr. No.</th>
-                    <th>Parameters</th>
-                    <th>Document</th>
-                    <th>Self Marks</th>
-                    <th>Obtained Marks</th>
-                </tr>
-            </thead>
-            <tbody>
-                <tr>
-                    <td>1</td>
-                    <td>Accuracy</td>
-                    <td>accuracy_report.pdf</td>
-                    <td>80</td>
-                    <td>85</td>
-                </tr>
-                <tr>
-                    <td>2</td>
-                    <td>Timeliness</td>
-                    <td>timeliness_report.pdf</td>
-                    <td>75</td>
-                    <td>80</td>
-                </tr>
-            </tbody>
-        </table>
-
-        <h3>Criteria 2: Teamwork</h3>
-        <table>
-            <thead>
-                <tr>
-                    <th>Sr. No.</th>
-                    <th>Parameters</th>
-                    <th>Document</th>
-                    <th>Self Marks</th>
-                    <th>Obtained Marks</th>
-                </tr>
-            </thead>
-            <tbody>
-                <tr>
-                    <td>1</td>
-                    <td>Collaboration</td>
-                    <td>collaboration_report.pdf</td>
-                    <td>70</td>
-                    <td>75</td>
-                </tr>
-                <tr>
-                    <td>2</td>
-                    <td>Support</td>
-                    <td>support_report.pdf</td>
-                    <td>80</td>
-                    <td>85</td>
-                </tr>
-            </tbody>
-        </table>
-
-        <h3>Criteria 3: Initiative</h3>
-        <table>
-            <thead>
-                <tr>
-                    <th>Sr. No.</th>
-                    <th>Parameters</th>
-                    <th>Document</th>
-                    <th>Self Marks</th>
-                    <th>Obtained Marks</th>
-                </tr>
-            </thead>
-            <tbody>
-                <tr>
-                    <td>1</td>
-                    <td>Problem Solving</td>
-                    <td>problem_solving_report.pdf</td>
-                    <td>85</td>
-                    <td>90</td>
-                </tr>
-                <tr>
-                    <td>2</td>
-                    <td>Leadership</td>
-                    <td>leadership_report.pdf</td>
-                    <td>88</td>
-                    <td>92</td>
-                </tr>
-            </tbody>
-        </table>
+        <!-- Criteria Tables -->
+        <% appraisalCriteria.forEach((criterion, index) => { %>
+            <h3>Criteria <%= index + 1 %>: <%= criterion.criteria_name %></h3>
+            <table>
+                <thead>
+                    <tr>
+                        <th>Sr. No.</th>
+                        <th>Parameters</th>
+                        <th>Document</th>
+                        <th>Self Score</th>
+                        <th>Committee Score</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <% if (criterion.parameters) { %>
+                        <% criterion.parameters.forEach((param, paramIndex) => { %>
+                            <tr>
+                                <td><%= paramIndex + 1 %></td>
+                                <td><%= param.parameter_description %></td>
+                                <td><%= param.document || "N/A" %></td>
+                                <td><%= param.self_score %></td>
+                                <td><%= param.committee_score %></td>
+                            </tr>
+                        <% }) %>
+                    <% } else { %>
+                        <tr>
+                            <td colspan="5">No parameters available for this criterion.</td>
+                        </tr>
+                    <% } %>
+                </tbody>
+            </table>
+        <% }) %>
     </div>
 </body>
-
 </html>

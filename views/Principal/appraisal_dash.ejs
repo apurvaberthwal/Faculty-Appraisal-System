@@ -1,0 +1,91 @@
+<%- include("nav") %>
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Appraisal Dashboard - <%= appraisal_id %></title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 0;
+            padding: 0;
+            background: #f4f4f9;
+        }
+        .container {
+            margin: 20px;
+            padding: 20px;
+            background: #ffffff;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+            border-radius: 8px;
+        }
+        .chip {
+            display: inline-block;
+            background-color: #3498db;
+            color: white;
+            padding: 8px 16px;
+            border-radius: 20px;
+            margin: 5px;
+            font-size: 14px;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 30px;
+        }
+        th, td {
+            padding: 10px;
+            text-align: center;
+            border: 1px solid #ddd;
+        }
+        th {
+            background-color: #007bff;
+            color: white;
+        }
+        td {
+            background-color: #f9f9f9;
+        }
+        td:nth-child(odd) {
+            background-color: #f1f1f1;
+        }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <h2>Appraisal Dashboard - <%= appraisal_id %></h2>
+
+    <!-- Chips displaying eligibility details -->
+    <div>
+        <div class="chip">Eligible Faculty: <%= eligibleFaculty %></div>
+        <div class="chip">Filled Forms: <%= filledForms %></div>
+        <div class="chip">Not Filled Forms: <%= notFilledForms %></div>
+        <div class="chip">Checked Forms: <%= checkedForms %></div>
+    </div>
+
+    <!-- Matrix of Marks -->
+    <h3>Marks for All Employees per Criteria</h3>
+    <table>
+        <thead>
+            <tr>
+                <th>Employee Name</th>
+                <% criteria.forEach(function(criteriaItem) { %>
+                    <th><%= criteriaItem.criteria_description %></th>
+                <% }) %>
+            </tr>
+        </thead>
+        <tbody>
+            <% for (let employeeId in employeeMarks) { %>
+                <tr>
+                    <td><%= employeeMarks[employeeId].user_name %></td>
+                    <% criteria.forEach(function(criteriaItem) { %>
+                        <td><%= employeeMarks[employeeId][criteriaItem.criteria_description] || 'N/A' %></td>
+                    <% }) %>
+                </tr>
+            <% } %>
+        </tbody>
+    </table>
+</div>
+
+</body>
+</html>

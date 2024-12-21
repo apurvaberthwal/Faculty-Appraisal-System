@@ -55,7 +55,7 @@ app.use("/superAdmin",SuperAdminRoute);
 app.get("/", async function (req, res) {
   
 
-  res.render("index");
+  res.render("index.ejs");
 });
 app.get('/api/departments', async (req, res) => {
   const { institution_id } = req.query;

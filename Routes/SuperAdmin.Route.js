@@ -5,7 +5,7 @@ import facultyDb from '../faculty.db.js';
 
 const router = express.Router();
 router.get("/login",async (req, res) => {
-    res.render("superAdmin/login.ejs");
+    res.render("./superAdmin/login.ejs");
 })
 router.use((req, res, next) => {
     if (req.cookies.token) {
@@ -78,15 +78,15 @@ router.get('/pending-requests', async (req, res) => {
     }
 });
 router.get("/dashboard",async (req, res) => {
-    res.render("superAdmin/dashboard");
+    res.render("./superAdmin/dashboard");
 })
 // Middleware to fetch pending approvals count for the navbar
 
 router.get("/createInstitute",async (req, res) => {
-    res.render("superAdmin/add_institute");
+    res.render("./superAdmin/add_institute");
 })
 router.get("/createDepartment",async (req, res)=> {
-    res.render("superAdmin/add_department");
+    res.render("./superAdmin/add_department");
 });    
 
 // GET route to display pending approvals with success and error messages

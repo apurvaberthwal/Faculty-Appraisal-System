@@ -94,7 +94,7 @@ router.get('/login', (req, res) => {
     const message = req.query.message || '';
     const error = req.query.error || '';
     const username = req.query.username || '';
-    res.render('./principal/login.ejs', { message, error, username });
+    res.render('./Principal/login.ejs', { message, error, username });
 });
 
 
@@ -432,7 +432,7 @@ router.post('/login', async (req, res) => {
                      console.log('Email sent: ' + info.response);
                  }
              });
-            res.render("./principal/verify",{username:username})}
+            res.render("./Principal/verify",{username:username})}
         } else {
             res.render("./Principal/login", { error: "User Doest not Exists." });
         }
@@ -443,7 +443,7 @@ router.post('/login', async (req, res) => {
 });
 router.get('/reset-password', (req, res) => {
     const user_id = req.query.user_id;
-    res.render('./principal/reset-password', { user_id });
+    res.render('./Principal/reset-password', { user_id });
 });
 
 router.post('/reset-password', async (req, res) => {
@@ -592,7 +592,7 @@ router.get('/createCommittee',async (req, res) => {
     `;
         const [employees] = await facultyDb.execute(activeEmployeesQuery, [instituteId]);
 
-        res.render('./principal/createCommittee', { employees });
+        res.render('./Principal/createCommittee', { employees });
     }
     catch (err) {
         console.error(err);
@@ -624,7 +624,7 @@ router.get('/appraisal/createCommittee/:appraisalId', async (req, res) => {
             const appraisal_cycle_name = appraisalCycleRows.length > 0 ? appraisalCycleRows[0].appraisal_cycle_name : 'Unknown';
             console.log(employees, ', ',appraisal_cycle_name);
             // Render the page with the employees and the appraisal cycle name
-            res.render('./principal/appraisalCommitteeMember', { employees, appraisal_cycle_name, appraisal_id: appraisalId });
+            res.render('./Principal/appraisalCommitteeMember', { employees, appraisal_cycle_name, appraisal_id: appraisalId });
         }
         catch (err) {
             console.error(err);
@@ -863,7 +863,7 @@ router.get('/editCommittee', async (req, res) => {
         const [committeeMembers] = await facultyDb.query(query, [instituteId]);
 
         // Render the EJS page with the fetched data
-        res.render('./principal/committee', { committeeMembers ,message});
+        res.render('./Principal/committee', { committeeMembers ,message});
     } catch (err) {
         console.error("Error fetching committee members:", err);
         res.status(500).send("Error fetching committee members.");
@@ -936,7 +936,7 @@ router.post("/add-departments", async (req, res) => {
         );
 
         if (result.affectedRows > 0) {
-            return res.render('./principal/addDepartment',{success:"Successfully Added Department!!!!!",error:''});
+            return res.render('./Principal/addDepartment',{success:"Successfully Added Department!!!!!",error:''});
         }
         return res.render('./Principal/addDepartment',{success:"",error:'Failed to add department'});
 
@@ -964,7 +964,7 @@ router.get('/departments', async (req, res) => {
         );
 
         // Render the page with the list of active and removed departments
-        res.render('./principal/departments', {
+        res.render('./Principal/departments', {
             departments: departments,
             removedDepartments: removedDepartments,  // Pass removed departments
             message: req.query.message || null  // Optional success message after remove
@@ -1002,7 +1002,7 @@ router.get("/createAppraisal", async (req, res) => {
             'SELECT * FROM department_master WHERE institution_id = ? AND status="active"',
             [instituteId]
         );
-        res.render('./principal/createAppraisal', { departments });
+        res.render('./Principal/createAppraisal', { departments });
     } catch (error) {
         console.error('Error fetching departments:', error);
         res.status(500).send('Internal Server Error');
@@ -1032,7 +1032,7 @@ router.get("/sessionActivate", async (req, res) => {
         }
     
         // Render the appraisal table page and pass the appraisals data
-        res.render('./principal/ShowAppraisalCycle', { appraisals });
+        res.render('./Principal/ShowAppraisalCycle', { appraisals });
       } catch (error) {
         console.error('Error fetching appraisal data:', error);
         res.status(500).send('Internal Server Error');
@@ -1077,7 +1077,7 @@ router.get("/grade", async (req, res) => {
         const appraisal_cycle_name = appraisalCycleRows[0].appraisal_cycle_name ///
         console.log(appraisal_cycle_name)
         // Pass appraisal_id and total_marks to the grade view
-        res.render("./principal/grade", { appraisal_id, total_marks,appraisal_cycle_name });
+        res.render("./Principal/grade", { appraisal_id, total_marks,appraisal_cycle_name });
     } catch (error) {
         console.error(error);
         res.status(500).send('Server Error');
@@ -1092,7 +1092,7 @@ router.get("/criteriaSelection/:appraisalId", async (req, res) => {
             'SELECT * FROM criteria_master where type ="self"; '
         );
 
-        res.render('./principal/criteriaSelection', { criteria, appraisalId });  // Pass appraisalId to the view
+        res.render('./Principal/criteriaSelection', { criteria, appraisalId });  // Pass appraisalId to the view
         
     } catch (error) {
         console.error('Error fetching departments:', error);
@@ -1115,7 +1115,7 @@ console.log(req.query)
         const criteria = await getCriteriaWithParameters(selectedCriteriaIds);
         console.log(criteria)
         // Render the parameter table page with the criteria and appraisalId
-        res.render('./principal/parameterTable', {
+        res.render('./Principal/parameterTable', {
             criteria,
             appraisalId,
             message: `Selected ${selectedCriteriaIds.length} criteria.`
@@ -1182,7 +1182,7 @@ router.get("/criteriaMarks/:appraisal_id", async (req, res) => {
         `, [appraisal_id]);
 
         // Render the main template with criteria-level data
-        res.render("./principal/criteriaMarks", { criteriaData, appraisal_id ,appraisal_cycle_name});
+        res.render("./Principal/criteriaMarks", { criteriaData, appraisal_id ,appraisal_cycle_name});
     } catch (error) {
         console.error('Error fetching criteria data:', error);
         res.status(500).send('Server Error');
@@ -1493,7 +1493,7 @@ router.get("/appraisalReport", async (req, res) => {
         }
     
         // Render the appraisal table page and pass the appraisals data
-        res.render('./principal/appraisalReport', { appraisals });
+        res.render('./Principal/appraisalReport', { appraisals });
       } catch (error) {
         console.error('Error fetching appraisal data:', error);
         res.status(500).send('Internal Server Error');
@@ -1566,7 +1566,7 @@ router.get("/reports/:appraisal_id", async (req, res) => {
         const [employees] = await facultyDb.query(query, [appraisal_id, appraisal_id, appraisal_id, institution_id]);
 
         if (employees.length === 0) {
-            res.render("./principal/report", { employees: [], error: "No data found.", appraisal_id: appraisal_id });
+            res.render("./Principal/report", { employees: [], error: "No data found.", appraisal_id: appraisal_id });
             return;
         }
 
@@ -1593,7 +1593,7 @@ employees.forEach(employee => {
 });
 console.log(employees);
 
-res.render("./principal/appraisal_Emplist", { employees, appraisal_id, error: "" });
+res.render("./Principal/appraisal_Emplist", { employees, appraisal_id, error: "" });
   } catch (err) {
         console.error(err);
         res.status(500).send("Server Error");
@@ -1670,7 +1670,7 @@ router.get('/reports/:appraisal_id/:employeeId', async (req, res) => {
         console.log(appraisalCriteria);
 
         // Render the page with data from the queries
-        res.render('./principal/appraisal_emp_report', {
+        res.render('./Principal/appraisal_emp_report', {
             employee: { name: "Employee Name" }, // Replace with actual employee data
             appraisal_cycle_name: appraisalCycle.appraisal_cycle_name,
             total_grade: appraisalCycle.total_grade || "A",
@@ -1695,7 +1695,7 @@ router.get('/appraisalDetail', async (req, res) => {
     };
 
     // Render the appraisalDetail page with dummy data
-    res.render('./principal/appraisalDetail', { appraisalData });
+    res.render('./Principal/appraisalDetail', { appraisalData });
 });
 
 

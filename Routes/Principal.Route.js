@@ -94,7 +94,7 @@ router.get('/login', (req, res) => {
     const message = req.query.message || '';
     const error = req.query.error || '';
     const username = req.query.username || '';
-    res.render('./principal/login', { message, error, username });
+    res.render('./principal/login.ejs', { message, error, username });
 });
 
 

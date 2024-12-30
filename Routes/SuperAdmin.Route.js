@@ -5,7 +5,7 @@ import facultyDb from '../faculty.db.js';
 
 const router = express.Router();
 router.get("/login",async (req, res) => {
-    res.render("superAdmin/login");
+    res.render("superAdmin/login.ejs");
 })
 router.use((req, res, next) => {
     if (req.cookies.token) {
